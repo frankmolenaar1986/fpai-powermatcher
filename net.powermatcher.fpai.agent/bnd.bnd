@@ -8,4 +8,3 @@ Bundle-Version: 1.0.0
 	net.powermatcher.core.scheduler.service;version=latest,\
 	biz.aQute.bnd.annotation;version="[1.50.0,2)"
 Export-Package: net.powermatcher.fpai.agent
--sign: fps

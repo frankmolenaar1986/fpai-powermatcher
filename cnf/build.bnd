@@ -1,7 +1,6 @@
-Git-Descriptor: ${system-allow-fail;git describe --dirty --always}
-Git-SHA: ${system-allow-fail;git rev-list -1 HEAD}
+-include: cnf.shared/build.bnd
+	
+Bundle-Category: FlexiblePower Application Infrastructure - PowerMatcher integration
+qualifier: SNAPSHOT-${tstamp}
 
-javac.source: 1.6
-javac.target: 1.6
-
--sign: fps
+Include-Resource: ../cnf.shared/LICENSE.txt
