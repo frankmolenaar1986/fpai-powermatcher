@@ -2,6 +2,5 @@
 <project name="fpai-powermatcher" default="build">
 	<property name="project.title" value="FPAI PowerMatcher bundles" />
 	<property name="targetversion" value="14.02" />
-	<property name="deployment-needed" value="true" />
 	<import file="../cnf.shared/build-jenkins.xml" />
 </project>
