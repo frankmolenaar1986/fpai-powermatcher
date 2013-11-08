@@ -11,7 +11,7 @@
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.auctioneer)',\
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.controller)',\
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.integrationtest)',\
-	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.test)',\
+	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.unittests)',\
 	osgi.identity;filter:='(osgi.identity=flexiblepower.api)',\
 	osgi.identity;filter:='(osgi.identity=flexiblepower.api.ext)',\
 	osgi.identity;filter:='(osgi.identity=flexiblepower.runtime)',\
@@ -57,7 +57,7 @@
 	net.powermatcher.fpai.auctioneer;version=latest,\
 	net.powermatcher.fpai.controller;version=latest,\
 	net.powermatcher.fpai.integrationtest;version=latest,\
-	net.powermatcher.fpai.test;version=latest,\
+	net.powermatcher.fpai.unittests;version=latest,\
 	org.apache.felix.configadmin;version='[1.6.0,1.6.1)',\
 	org.apache.felix.metatype;version='[1.0.6,1.0.7)',\
 	org.apache.felix.scr;version='[1.6.2,1.6.3)',\
