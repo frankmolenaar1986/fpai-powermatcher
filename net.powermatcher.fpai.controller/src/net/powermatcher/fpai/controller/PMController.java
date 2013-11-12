@@ -31,6 +31,7 @@ import net.powermatcher.fpai.agent.storage.StorageAgent;
 import net.powermatcher.fpai.agent.timeshifter.TimeshifterAgent;
 import net.powermatcher.fpai.agent.uncontrolled.UncontrolledAgent;
 import net.powermatcher.fpai.controller.PMController.Config;
+import net.powermatcher.fpai.fullwidget.PMFullWidget;
 
 import org.flexiblepower.control.ControllerManager;
 import org.flexiblepower.rai.BufferControlSpace;
@@ -55,7 +56,7 @@ import aQute.bnd.annotation.component.Reference;
 import aQute.bnd.annotation.metatype.Configurable;
 import aQute.bnd.annotation.metatype.Meta;
 
-@Component(immediate = true, designateFactory = Config.class)
+@Component(immediate = true, designateFactory = Config.class, provide = { ControllerManager.class, PMController.class })
 public class PMController implements ControllerManager {
     interface Config {
         @Meta.AD(deflt = "pvpanel,dishwasher,refrigerator,battery", cardinality = Integer.MAX_VALUE)
@@ -84,6 +85,9 @@ public class PMController implements ControllerManager {
 
         @Meta.AD(deflt = "auctioneer1")
         String auctioneer_id();
+
+        @Meta.AD(deflt = "true")
+        boolean small_widget();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(PMController.class);
@@ -147,8 +151,16 @@ public class PMController implements ControllerManager {
         }
 
         // Widget
-        widget = new PMWidgetImpl(this);
-        widgetRegistration = context.registerService(Widget.class, widget, null);
+        if (config.small_widget()) {
+            widget = new PMWidgetImpl(this);
+            widgetRegistration = context.registerService(Widget.class, widget, null);
+        } else {
+            widget = new PMFullWidget(this);
+            Dictionary<String, Object> p = new Hashtable<String, Object>();
+            p.put("widget.type", "full");
+            p.put("widget.name", "pmfullwidget");
+            widgetRegistration = context.registerService(Widget.class, widget, p);
+        }
 
     }
 

@@ -24,7 +24,8 @@ Include-Resource: res
 
 Service-Component: net.powermatcher.fpai.controller.*
 
-Export-Package: net.powermatcher.fpai.controller
+Export-Package: net.powermatcher.fpai.controller,\
+	net.powermatcher.fpai.fullwidget
 Import-Package: aQute.bnd.annotation.metatype;resolution:=optional,\
 	*
 
