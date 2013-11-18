@@ -16,6 +16,7 @@ import net.powermatcher.core.adapter.Adapter;
 import net.powermatcher.core.agent.concentrator.Concentrator;
 import net.powermatcher.core.agent.concentrator.framework.AbstractConcentrator;
 import net.powermatcher.core.agent.framework.Agent;
+import net.powermatcher.core.agent.framework.config.AgentConfiguration;
 import net.powermatcher.core.agent.framework.service.AgentService;
 import net.powermatcher.core.agent.marketbasis.adapter.MarketBasisAdapter;
 import net.powermatcher.core.configurable.BaseConfiguration;
@@ -136,6 +137,7 @@ public class PMController implements ControllerManager {
 
         config = Configurable.createConfigurable(Config.class, properties);
         this.properties = properties;
+        this.properties.put(AgentConfiguration.AGENT_BID_LOG_LEVEL_PROPERTY, AgentConfiguration.FULL_LOGGING);
 
         concentratorConfiguration = new BaseConfiguration(properties);
         concentrator = createConcentrator(concentratorConfiguration);
@@ -161,6 +163,7 @@ public class PMController implements ControllerManager {
             p.put("widget.name", "pmfullwidget");
             widgetRegistration = context.registerService(Widget.class, widget, p);
         }
+        concentrator.bind(widget);
 
     }
 
@@ -199,6 +202,7 @@ public class PMController implements ControllerManager {
 
         concentrator.unbind(executorService);
         concentrator.unbind(timeService);
+        concentrator.unbind(widget);
         concentrator = null;
         widgetRegistration.unregister();
     }
