@@ -168,7 +168,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         }
         double fastestChargeTimeSecond = deltaEnergyJoule / (maxChargePowerWatt - dischargeWatt);
         double fastestChargeTimeMS = fastestChargeTimeSecond * 1000;
-        double relativeTurnOnPrice = timeToDeadlineMS / fastestChargeTimeMS;
+        double relativeTurnOnPrice = fastestChargeTimeMS / timeToDeadlineMS;
         if (isProducingBuffer(controlSpace)) {
             relativeTurnOnPrice = 1 - relativeTurnOnPrice;
         }
@@ -196,8 +196,8 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         // Determine the local bandwidth. The bandwidth shrinks when the relativeTurnOnPrice comes close to the border
         // of the bid.
         double bandWidth = Math.min(relativeTurnOnPrice * 2, Math.min((1 - relativeTurnOnPrice) * 2, bidBandWidth));
-        int rangeLowerIdx = (int) ((relativeTurnOnPrice - (bandWidth / 2)) * marketBasis.getPriceSteps());
-        int rangeUpperIdx = (int) ((relativeTurnOnPrice + (bandWidth / 2)) * marketBasis.getPriceSteps());
+        int rangeLowerIdx = (int) ((relativeTurnOnPrice - (bandWidth / 2)) * (marketBasis.getPriceSteps() - 1));
+        int rangeUpperIdx = (int) ((relativeTurnOnPrice + (bandWidth / 2)) * (marketBasis.getPriceSteps() - 1));
 
         // create the bid respecting the bounds of the market basis and control space
         return createSlopedBid(marketBasis, controlSpace, rangeLowerIdx, rangeUpperIdx);
@@ -223,7 +223,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
                                     int rangeUpperIdx) {
         assert rangeLowerIdx <= rangeUpperIdx;
         assert rangeLowerIdx >= 0;
-        assert rangeUpperIdx <= marketBasis.getPriceSteps();
+        assert rangeUpperIdx < marketBasis.getPriceSteps();
 
         ConstraintList<Power> chargeSpeed = controlSpace.getChargeSpeed();
 
@@ -238,8 +238,14 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
             minDemand = 0;
         }
         // construct the bid via price points
-        PricePoint[] pricePoints = new PricePoint[] { new PricePoint(rangeLowerIdx, maxDemand),
-                                                     new PricePoint(rangeUpperIdx, minDemand) };
+        PricePoint[] pricePoints;
+        if (rangeLowerIdx == marketBasis.getPriceSteps() - 1) {
+            // Without this check, the last element of the demand array would get the value minDemand
+            pricePoints = new PricePoint[] { new PricePoint(0, maxDemand) };
+        } else {
+            pricePoints = new PricePoint[] { new PricePoint(rangeLowerIdx, maxDemand),
+                                            new PricePoint(rangeUpperIdx, minDemand) };
+        }
 
         BidInfo bid = new BidInfo(marketBasis, pricePoints);
 
