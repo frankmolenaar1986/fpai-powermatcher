@@ -129,12 +129,13 @@ public class MockResourceManager<CS extends ControlSpace, RS extends ResourceSta
     }
 
     @Override
-    public void registerDriver(ResourceDriver<RS, RCP> driver) {
+    public void registerDriver(ResourceDriver<? extends RS, ? super RCP> driver) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void unregisterDriver(ResourceDriver<RS, RCP> driver) {
+    public void unregisterDriver(ResourceDriver<? extends RS, ? super RCP> driver) {
         throw new UnsupportedOperationException();
     }
+
 }
