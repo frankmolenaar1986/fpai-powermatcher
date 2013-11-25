@@ -13,7 +13,7 @@ import net.powermatcher.core.scheduler.service.TimeService;
 /**
  * Implementation of a TimeService which can be controlled programmatically
  */
-public class MockTimeService implements TimeService {
+public class MockTimeService implements TimeService, org.flexiblepower.time.TimeService {
     private long currentTime;
 
     public MockTimeService() {
@@ -58,31 +58,19 @@ public class MockTimeService implements TimeService {
         return new Date(currentTimeMillis());
     }
 
-    public org.flexiblepower.time.TimeService getFlexiblePowerTimeService() {
-        return new PowerMatcherTimeServiceAdapter(this);
-    }
-
     @Override
     public String toString() {
         return "MockTimeService [currentTime=" + new Date(currentTime) + "]";
     }
 
-    public static class PowerMatcherTimeServiceAdapter implements org.flexiblepower.time.TimeService {
-        private final TimeService timeService;
+    @Override
+    public Date getTime() {
+        return new Date(currentTime);
+    }
 
-        public PowerMatcherTimeServiceAdapter(TimeService timeService) {
-            this.timeService = timeService;
-        }
-
-        @Override
-        public Date getTime() {
-            return new Date(getCurrentTimeMillis());
-        }
-
-        @Override
-        public long getCurrentTimeMillis() {
-            return timeService.currentTimeMillis();
-        }
+    @Override
+    public long getCurrentTimeMillis() {
+        return currentTime;
     }
 
 }

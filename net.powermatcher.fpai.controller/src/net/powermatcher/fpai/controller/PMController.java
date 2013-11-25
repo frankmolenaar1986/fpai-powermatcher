@@ -142,7 +142,7 @@ public class PMController implements ControllerManager {
         concentratorConfiguration = new BaseConfiguration(properties);
         concentrator = createConcentrator(concentratorConfiguration);
         concentrator.bind(executorService);
-        concentrator.bind(timeService);
+        concentrator.bind(pmTimeService);
 
         if (config.broker_uri() == null || config.broker_uri().isEmpty()) {
             Dictionary<String, Object> concentratorProperties = new Hashtable<String, Object>();
@@ -201,7 +201,7 @@ public class PMController implements ControllerManager {
         }
 
         concentrator.unbind(executorService);
-        concentrator.unbind(timeService);
+        concentrator.unbind(pmTimeService);
         concentrator.unbind(widget);
         concentrator = null;
         widgetRegistration.unregister();
@@ -215,11 +215,13 @@ public class PMController implements ControllerManager {
         this.executorService = executorService;
     }
 
-    private net.powermatcher.core.scheduler.service.TimeService timeService;
+    private TimeService fpaiTimeService;
+    private net.powermatcher.core.scheduler.service.TimeService pmTimeService;
 
     @Reference
     public void setTimeService(final TimeService timeService) {
-        this.timeService = new net.powermatcher.core.scheduler.service.TimeService() {
+        fpaiTimeService = timeService;
+        pmTimeService = new net.powermatcher.core.scheduler.service.TimeService() {
             @Override
             public int getRate() {
                 throw new UnsupportedOperationException();
@@ -261,7 +263,7 @@ public class PMController implements ControllerManager {
                                         agentProtocolAdapter,
                                         mqttv3Connection }) {
             a.bind(executorService);
-            a.bind(timeService);
+            a.bind(pmTimeService);
             a.bind();
         }
     }
@@ -272,7 +274,7 @@ public class PMController implements ControllerManager {
                                         agentProtocolAdapter,
                                         marketBasisAdapter }) {
             a.unbind();
-            a.unbind(timeService);
+            a.unbind(pmTimeService);
             a.unbind(executorService);
         }
     }
@@ -342,7 +344,8 @@ public class PMController implements ControllerManager {
 
             agent.setConfiguration(new PrefixedConfiguration(agentProperties, prefix));
             agent.bind(executorService);
-            agent.bind(timeService);
+            agent.bind(pmTimeService);
+            agent.setFpaiTimeService(fpaiTimeService);
             if (widget != null) {
                 agent.bind(widget);
             }
@@ -378,7 +381,7 @@ public class PMController implements ControllerManager {
 
             // unbind the executor service
             agent.unbind(executorService);
-            agent.unbind(timeService);
+            agent.unbind(pmTimeService);
 
             logger.info("{} unbound from Concentrator and ControllableResource", agent.getClass().getSimpleName());
         }

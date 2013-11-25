@@ -23,6 +23,8 @@ import org.flexiblepower.rai.Allocation;
 import org.flexiblepower.rai.ControlSpace;
 import org.flexiblepower.rai.ControllableResource;
 import org.flexiblepower.rai.Controller;
+import org.flexiblepower.rai.ext.ControlSpaceCache;
+import org.flexiblepower.time.TimeService;
 
 /**
  * Abstract class for PowerMatcher agents on the FPAI framework. FPAIAgents are created by the PMController
@@ -36,14 +38,16 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
 
     private static Measurable<Duration> UPDATE_INTERVAL = Measure.valueOf(1, NonSI.MINUTE);
 
-    /** Last known ControlSpace */
-    private CS lastControlSpace = null;
+    /** Last processed ControlSpace */
+    private CS lastProcessedControlSpace = null;
     /** Last known PriceInfo */
     private PriceInfo lastPriceInfo = null;
     /** Time when we received the last PriceInfo */
     private Date lastPriceDate = null;
     /** The resource this agent is controlling */
     private ControllableResource<? extends CS> controllableResource = null;
+    /** The {@link ControlSpaceCache} keeps track of received {@link ControlSpace}s */
+    private ControlSpaceCache<CS> controlSpaceCache;
 
     private ScheduledFuture<?> scheduledFuture;
 
@@ -59,12 +63,16 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
 
     protected abstract Allocation createAllocation(BidInfo lastBid, PriceInfo newPriceInfo, CS controlSpace);
 
+    public void setFpaiTimeService(TimeService timeService) {
+        this.controlSpaceCache = new ControlSpaceCache<CS>(timeService);
+    }
+
     /**
      * Force a bid update based on the current control space
      */
     @Override
     protected synchronized void doBidUpdate() {
-        CS controlSpace = getLastControlSpace();
+        CS controlSpace = controlSpaceCache.getActiveControlSpace();
         if (controlSpace != null) {
             this.controlSpaceUpdated(this.controllableResource, controlSpace);
         }
@@ -73,25 +81,25 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
     @Override
     public synchronized void controlSpaceUpdated(ControllableResource<? extends CS> resource, CS controlSpace) {
         assert controllableResource == resource;
+        // Add the controlSpace to the cache
+        controlSpaceCache.addNewControlSpace(controlSpace);
+        // Retrieve the controlSpace
+        CS activeControlSpace = controlSpaceCache.getActiveControlSpace();
 
         BidInfo bidInfo;
-        if (controlSpace == null) {
+        if (activeControlSpace == null) {
             // No flexibility available
             bidInfo = BidUtil.zeroBid(getCurrentMarketBasis());
-            this.logDebug("ControlSpace was null, triggering must-off bid");
-        } else if (controlSpace.getValidThru().getTime() > getTimeSource().currentTimeMillis()) {
-            // Control space hasn't expired
-
+            this.logDebug("No active ControlSpace found, triggering must-off bid");
+        } else {
             // remember the updated control space
-            setLastControlSpace(controlSpace);
+            setLastProcessedControlSpace(activeControlSpace);
 
             // calculate a new bid
-            bidInfo = createBid(controlSpace, getCurrentMarketBasis());
-            this.logDebug("Control space was updated (" + controlSpace + "), triggering updating the bid: " + bidInfo);
-        } else {
-            // There is no valid control space left. We assume this indicates that there is no flexibility.
-            bidInfo = BidUtil.zeroBid(getCurrentMarketBasis());
-            this.logDebug("No valid control space found, triggering must-off bid");
+            bidInfo = createBid(activeControlSpace, getCurrentMarketBasis());
+            this.logDebug("Control space was updated (" + activeControlSpace
+                          + "), triggering updating the bid: "
+                          + bidInfo);
         }
         // and publish it
         publishBidUpdate(bidInfo);
@@ -121,7 +129,7 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
         }
 
         // check if there is control space information available
-        CS currentControlSpace = getLastControlSpace();
+        CS currentControlSpace = getLastProcessedControlSpace();
         if (currentControlSpace == null) {
             this.logDebug("Ignoring price update, no control space information available");
             return;
@@ -169,23 +177,23 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
 
         assert this.controllableResource == controllableResource;
         controllableResource.unsetController(this);
-        setLastControlSpace(null);
+        setLastProcessedControlSpace(null);
         controllableResource = null;
     }
 
-    private CS getLastControlSpace() {
+    private CS getLastProcessedControlSpace() {
         if (controllableResource == null) {
             return null;
         }
 
         synchronized (controllableResource) {
-            return lastControlSpace;
+            return lastProcessedControlSpace;
         }
     }
 
-    private void setLastControlSpace(CS controlSpace) {
+    private void setLastProcessedControlSpace(CS controlSpace) {
         synchronized (controllableResource) {
-            lastControlSpace = controlSpace;
+            lastProcessedControlSpace = controlSpace;
         }
     }
 

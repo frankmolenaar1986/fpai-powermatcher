@@ -17,7 +17,7 @@ public class MockScheduledExecutorTest extends TestCase {
     @Override
     public void setUp() throws Exception {
         timeService = new MockTimeService();
-        executor = new MockScheduledExecutor(timeService.getFlexiblePowerTimeService());
+        executor = new MockScheduledExecutor(timeService);
     }
 
     @Override

@@ -62,6 +62,7 @@ public class BufferAgentTest extends TestCase {
         agent.bind(executor);
 
         timeService = new MockTimeService();
+        agent.setFpaiTimeService(timeService);
         agent.bind(timeService);
 
         resourceManager = new MockResourceManager(RESOURCE_ID, BufferControlSpace.class);
@@ -341,8 +342,7 @@ public class BufferAgentTest extends TestCase {
     }
 
     // public void testValidFrom() {
-    // TODO This test is temporarily disabled since this functionality has not yet been implemented
-    public void ignoreValidFrom() {
+    public void testValidFrom() {
         BufferControlSpaceBuilder b = new BufferControlSpaceBuilder();
         b.stateOfCharge(0f);
         b.validFrom(timeService.getDate());
@@ -371,7 +371,8 @@ public class BufferAgentTest extends TestCase {
         b.validFrom(timeService.getDate());
         b.validThru(new Date(timeService.currentTimeMillis() + 10000)); // Valid
         resourceManager.updateControlSpace(b.build(RESOURCE_ID));
-        parent.getLastBid(agent.getId(), 1000);
+        BidInfo bid1 = parent.getLastBid(agent.getId(), 1000);
+        BidAnalyzer.assertFlatBidWithValue(bid1, Measure.valueOf(1000, SI.WATT));
 
         timeService.stepInTime(1000);
 
@@ -381,10 +382,8 @@ public class BufferAgentTest extends TestCase {
         resourceManager.updateControlSpace(b.build(RESOURCE_ID));
         BidInfo bid2 = parent.getLastBid(agent.getId(), 1000);
 
-        // Since there is no valid control space at the moment, bid2 should be flat
-        if (bid2 != null) {
-            BidAnalyzer.assertFlatBidWithValue(bid2, Measure.valueOf(0, SI.WATT));
-        }
+        // Since the second ControlSpace is invalid, it should not have changed the bid
+        BidAnalyzer.assertFlatBidWithValue(bid2, Measure.valueOf(1000, SI.WATT));
     }
 
     /**

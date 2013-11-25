@@ -296,9 +296,10 @@ public class TimeshifterAgentTest extends TestCase {
         agent = new TimeshifterAgent(new PrefixedConfiguration(cfg, CFG_PREFIX));
 
         timeService = new MockTimeService(new Date(0));
+        agent.setFpaiTimeService(timeService);
         agent.bind(timeService);
 
-        executor = new MockScheduledExecutor(timeService.getFlexiblePowerTimeService());
+        executor = new MockScheduledExecutor(timeService);
         agent.bind(executor);
 
         manager = new MockResourceManager(RESOURCE_ID, UncontrolledControlSpace.class);

@@ -33,6 +33,7 @@ import net.powermatcher.fpai.test.SystemTimeService;
 
 import org.flexiblepower.rai.UncontrolledControlSpace;
 import org.flexiblepower.rai.values.EnergyProfile;
+import org.flexiblepower.time.TimeService;
 
 /** Unit test for {@link net.powermatcher.fpai.agent.uncontrolled.UncontrolledAgent}. */
 public class UncontrolledAgentTest extends TestCase {
@@ -127,11 +128,11 @@ public class UncontrolledAgentTest extends TestCase {
         // let the resource manager send the new control space to the agent
         resourceManager.updateControlSpace(controlSpace);
         // then retreive the last bid from the agent
-        return parent.getLastBid(agent.getId(), 10);
+        return parent.getLastBid(agent.getId(), 1000);
     }
 
     public void testControlSpaceUpdatedGarbadgeIn() {
-        Date startTime = new Date(System.currentTimeMillis() - 1000);
+        Date startTime = new Date(System.currentTimeMillis() - 1500);
 
         // test with Double.MAX_VALUE kWh for a second which can't be expressed in watts
         Measurable<Energy> maxkWh = Measure.valueOf(Double.MAX_VALUE, KWH);
@@ -168,6 +169,17 @@ public class UncontrolledAgentTest extends TestCase {
         agent = new UncontrolledAgent(new PrefixedConfiguration(cfg, CFG_PREFIX));
 
         timeService = new SystemTimeService();
+        agent.setFpaiTimeService(new TimeService() {
+            @Override
+            public Date getTime() {
+                return new Date(timeService.currentTimeMillis());
+            }
+
+            @Override
+            public long getCurrentTimeMillis() {
+                return timeService.currentTimeMillis();
+            }
+        });
         agent.bind(timeService);
 
         executor = new MockScheduledExecutor(new PowerMatcherToFPAITimeService(timeService));

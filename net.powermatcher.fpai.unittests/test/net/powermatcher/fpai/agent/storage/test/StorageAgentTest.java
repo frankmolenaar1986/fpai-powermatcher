@@ -65,6 +65,7 @@ public class StorageAgentTest extends TestCase {
         agent.bind(executor);
 
         timeService = new MockTimeService();
+        agent.setFpaiTimeService(timeService);
         agent.bind(timeService);
 
         resourceManager = new MockResourceManager(RESOURCE_ID, StorageControlSpace.class);
@@ -158,7 +159,7 @@ public class StorageAgentTest extends TestCase {
         b.validFrom(timeService.getDate());
         b.validThru(new Date(timeService.currentTimeMillis() + 10000)); // Valid
         resourceManager.updateControlSpace(b.build(RESOURCE_ID));
-        parent.getLastBid(agent.getId(), 1000);
+        BidInfo bid1 = parent.getLastBid(agent.getId(), 1000);
 
         timeService.stepInTime(1000);
 
@@ -168,10 +169,8 @@ public class StorageAgentTest extends TestCase {
         resourceManager.updateControlSpace(b.build(RESOURCE_ID));
         BidInfo bid2 = parent.getLastBid(agent.getId(), 1000);
 
-        // Since there is no valid control space at the moment, bid2 should be flat
-        if (bid2 != null) {
-            BidAnalyzer.assertFlatBidWithValue(bid2, Measure.valueOf(0, WATT));
-        }
+        // Since the second ControlSpace is invalid, it should not have changed the bid
+        BidAnalyzer.assertBidsEqual(bid1, bid2);
     }
 
     public void testMinOnCharge() {
