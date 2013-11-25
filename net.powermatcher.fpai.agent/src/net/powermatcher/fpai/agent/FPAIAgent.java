@@ -72,9 +72,11 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
      */
     @Override
     protected synchronized void doBidUpdate() {
-        CS controlSpace = controlSpaceCache.getActiveControlSpace();
-        if (controlSpace != null) {
-            this.controlSpaceUpdated(this.controllableResource, controlSpace);
+        if (controlSpaceCache != null) {
+            CS controlSpace = controlSpaceCache.getActiveControlSpace();
+            if (controlSpace != null) {
+                this.controlSpaceUpdated(this.controllableResource, controlSpace);
+            }
         }
     }
 
