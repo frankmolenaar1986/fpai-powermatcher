@@ -10,7 +10,6 @@
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.agent.uncontrolled)',\
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.auctioneer)',\
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.controller)',\
-	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.integrationtest)',\
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.unittests)',\
 	osgi.identity;filter:='(osgi.identity=flexiblepower.api)',\
 	osgi.identity;filter:='(osgi.identity=flexiblepower.api.ext)',\
@@ -30,12 +29,13 @@
 	osgi.identity;filter:='(osgi.identity=ch.qos.logback.core)',\
 	osgi.identity;filter:='(osgi.identity=org.apache.felix.configadmin)',\
 	osgi.identity;filter:='(osgi.identity=org.apache.felix.metatype)',\
-	osgi.identity;filter:='(osgi.identity=org.apache.felix.scr)'
+	osgi.identity;filter:='(osgi.identity=org.apache.felix.scr)',\
+	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.integration.test)'
 -runbundles: biz.aQute.bnd.annotation;version='[1.52.3,1.52.4)',\
 	ch.qos.logback.classic;version='[1.0.13,1.0.14)',\
 	ch.qos.logback.core;version='[1.0.13,1.0.14)',\
-	flexiblepower.api;version='[1.0.0,1.0.1)',\
-	flexiblepower.api.ext;version='[1.0.0,1.0.1)',\
+	flexiblepower.api;version='[1.1.0,1.1.1)',\
+	flexiblepower.api.ext;version='[1.1.0,1.1.1)',\
 	flexiblepower.runtime;version='[1.0.0,1.0.1)',\
 	junit.osgi;version='[3.8.2,3.8.3)',\
 	net.powermatcher.core.adapter;version='[0.9.0,0.9.1)',\
@@ -56,11 +56,10 @@
 	net.powermatcher.fpai.agent.uncontrolled;version=latest,\
 	net.powermatcher.fpai.auctioneer;version=latest,\
 	net.powermatcher.fpai.controller;version=latest,\
-	net.powermatcher.fpai.integrationtest;version=latest,\
+	net.powermatcher.fpai.integration.test;version=latest,\
 	net.powermatcher.fpai.unittests;version=latest,\
 	org.apache.felix.configadmin;version='[1.6.0,1.6.1)',\
 	org.apache.felix.metatype;version='[1.0.6,1.0.7)',\
 	org.apache.felix.scr;version='[1.6.2,1.6.3)',\
 	org.eclipse.paho.client.mqttv3;version='[1.0.0,1.0.1)',\
-	osgi.cmpn;version='[4.3.1,4.3.2)',\
 	slf4j.api;version='[1.7.5,1.7.6)'
