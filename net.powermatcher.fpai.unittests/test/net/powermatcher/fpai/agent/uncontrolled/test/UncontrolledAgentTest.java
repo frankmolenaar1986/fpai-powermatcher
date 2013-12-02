@@ -45,7 +45,7 @@ public class UncontrolledAgentTest extends TestCase {
     private ScheduledExecutorService executor;
     SystemTimeService timeService;
     private MockMatcherService parent;
-    private MockResourceManager resourceManager;
+    private MockResourceManager<UncontrolledControlSpace> resourceManager;
 
     public void testControlSpaceUpdated() {
         double[] durationValues = { 0.1, 0.5, 1.0, 2.0 };
@@ -185,7 +185,7 @@ public class UncontrolledAgentTest extends TestCase {
         executor = new MockScheduledExecutor(new PowerMatcherToFPAITimeService(timeService));
         agent.bind(executor);
 
-        resourceManager = new MockResourceManager(RESOURCE_ID, UncontrolledControlSpace.class);
+        resourceManager = MockResourceManager.create(RESOURCE_ID, UncontrolledControlSpace.class);
         agent.bind(resourceManager);
 
         parent = new MockMatcherService();

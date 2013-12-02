@@ -14,13 +14,18 @@ import org.flexiblepower.ral.ResourceDriver;
 import org.flexiblepower.ral.ResourceManager;
 import org.flexiblepower.ral.ResourceState;
 
-public class MockResourceManager<CS extends ControlSpace, RS extends ResourceState, RCP extends ResourceControlParameters> implements
-                                                                                                                           ResourceManager<CS, RS, RCP> {
+public class MockResourceManager<CS extends ControlSpace> implements
+                                                          ResourceManager<CS, ResourceState, ResourceControlParameters> {
+    public static <CS extends ControlSpace> MockResourceManager<CS> create(String applianceId,
+                                                                           Class<CS> controlSpaceType) {
+        return new MockResourceManager<CS>(applianceId, controlSpaceType);
+    }
+
     /** the allocations received */
     private final List<Allocation> allAllocations = new ArrayList<Allocation>();
 
     /** all controllers */
-    private final List<Controller> controllers = new CopyOnWriteArrayList<Controller>();
+    private final List<Controller<? super CS>> controllers = new CopyOnWriteArrayList<Controller<? super CS>>();
 
     /** the id of the appliance managed */
     private final String applianceId;
@@ -100,16 +105,17 @@ public class MockResourceManager<CS extends ControlSpace, RS extends ResourceSta
      * updates the current control space (any invocation on getCurrentControlSpace will return the given control space)
      * and notifies all registered resource manager listeners with the given control space
      */
-    public void updateControlSpace(ControlSpace controlSpace) {
+    public void updateControlSpace(CS controlSpace) {
         this.controlSpace = controlSpace;
 
-        for (Controller controller : controllers) {
+        for (Controller<? super CS> controller : controllers) {
             controller.controlSpaceUpdated(this, controlSpace);
         }
     }
 
     @Override
-    public void consume(ObservationProvider<? extends RS> source, Observation<? extends RS> observation) {
+    public void consume(ObservationProvider<? extends ResourceState> source,
+                        Observation<? extends ResourceState> observation) {
         throw new UnsupportedOperationException();
     }
 
@@ -129,12 +135,12 @@ public class MockResourceManager<CS extends ControlSpace, RS extends ResourceSta
     }
 
     @Override
-    public void registerDriver(ResourceDriver<? extends RS, ? super RCP> driver) {
+    public void registerDriver(ResourceDriver<? extends ResourceState, ? super ResourceControlParameters> driver) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void unregisterDriver(ResourceDriver<? extends RS, ? super RCP> driver) {
+    public void unregisterDriver(ResourceDriver<? extends ResourceState, ? super ResourceControlParameters> driver) {
         throw new UnsupportedOperationException();
     }
 

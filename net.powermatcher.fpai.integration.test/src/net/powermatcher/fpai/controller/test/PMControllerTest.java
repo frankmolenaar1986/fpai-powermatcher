@@ -48,6 +48,7 @@ import org.flexiblepower.time.TimeUtil;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class PMControllerTest extends TestCase {
     private static final int WAIT_TIME = -2000;
 

@@ -32,7 +32,6 @@ import net.powermatcher.fpai.test.MockTimeService;
 
 import org.flexiblepower.rai.Allocation;
 import org.flexiblepower.rai.TimeShifterControlSpace;
-import org.flexiblepower.rai.UncontrolledControlSpace;
 import org.flexiblepower.rai.values.EnergyProfile;
 import org.flexiblepower.time.TimeUtil;
 
@@ -54,7 +53,7 @@ public class TimeshifterAgentTest extends TestCase {
     /** the agent under test */
     private TimeshifterAgent agent;
     /** the manager controlled by the agent */
-    private MockResourceManager manager;
+    private MockResourceManager<TimeShifterControlSpace> manager;
 
     private MockScheduledExecutor executor;
     private MockTimeService timeService;
@@ -302,7 +301,7 @@ public class TimeshifterAgentTest extends TestCase {
         executor = new MockScheduledExecutor(timeService);
         agent.bind(executor);
 
-        manager = new MockResourceManager(RESOURCE_ID, UncontrolledControlSpace.class);
+        manager = MockResourceManager.create(RESOURCE_ID, TimeShifterControlSpace.class);
         agent.bind(manager);
 
         parent = new MockMatcherService();

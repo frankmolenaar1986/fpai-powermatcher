@@ -47,7 +47,7 @@ public class StorageAgentTest extends TestCase {
     private StorageAgent agent;
     private ScheduledExecutorService executor;
     private MockTimeService timeService;
-    private MockResourceManager resourceManager;
+    private MockResourceManager<StorageControlSpace> resourceManager;
     private MockMatcherService parent;
 
     @Override
@@ -68,7 +68,7 @@ public class StorageAgentTest extends TestCase {
         agent.setFpaiTimeService(timeService);
         agent.bind(timeService);
 
-        resourceManager = new MockResourceManager(RESOURCE_ID, StorageControlSpace.class);
+        resourceManager = MockResourceManager.create(RESOURCE_ID, StorageControlSpace.class);
         agent.bind(resourceManager);
 
         parent = new MockMatcherService();

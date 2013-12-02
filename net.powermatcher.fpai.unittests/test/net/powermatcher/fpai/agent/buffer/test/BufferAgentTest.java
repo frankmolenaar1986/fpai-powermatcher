@@ -43,7 +43,7 @@ public class BufferAgentTest extends TestCase {
     private BufferAgent agent;
     private ScheduledExecutorService executor;
     private MockTimeService timeService;
-    private MockResourceManager resourceManager;
+    private MockResourceManager<BufferControlSpace> resourceManager;
     private MockMatcherService parent;
 
     @Override
@@ -65,7 +65,7 @@ public class BufferAgentTest extends TestCase {
         agent.setFpaiTimeService(timeService);
         agent.bind(timeService);
 
-        resourceManager = new MockResourceManager(RESOURCE_ID, BufferControlSpace.class);
+        resourceManager = MockResourceManager.create(RESOURCE_ID, BufferControlSpace.class);
         agent.bind(resourceManager);
 
         parent = new MockMatcherService();
