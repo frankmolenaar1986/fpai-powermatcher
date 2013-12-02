@@ -12,7 +12,7 @@ import net.powermatcher.core.configurable.service.ConfigurationService;
 
 /**
  * Implementation of the MatcherService interface which allows for retrieval of the last bid of an agent sent via the
- * matcher service interface.
+ * matcher service interface
  */
 public class MockMatcherService extends MatcherAgent {
     private final Map<String, List<BidInfo>> allBids = new HashMap<String, List<BidInfo>>();
