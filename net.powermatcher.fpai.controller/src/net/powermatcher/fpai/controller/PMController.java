@@ -157,7 +157,7 @@ public class PMController implements ControllerManager {
             widget = new PMWidgetImpl(this);
             widgetRegistration = context.registerService(Widget.class, widget, null);
         } else {
-            widget = new PMFullWidget(this);
+            widget = new PMFullWidget();
             Dictionary<String, Object> p = new Hashtable<String, Object>();
             p.put("widget.type", "full");
             p.put("widget.name", "pmfullwidget");

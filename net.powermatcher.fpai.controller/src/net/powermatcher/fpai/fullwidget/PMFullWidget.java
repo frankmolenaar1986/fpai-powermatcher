@@ -7,7 +7,6 @@ import java.util.Map;
 import net.powermatcher.core.agent.framework.log.BidLogInfo;
 import net.powermatcher.core.agent.framework.log.LogListenerService;
 import net.powermatcher.core.agent.framework.log.PriceLogInfo;
-import net.powermatcher.fpai.controller.PMController;
 import net.powermatcher.fpai.controller.PMWidget;
 
 import org.flexiblepower.ui.Widget;
@@ -19,11 +18,6 @@ public class PMFullWidget implements PMWidget, LogListenerService {
 
     private PriceLogInfo lastPrice;
     private final Map<String, BidLogInfo> latestBids = new HashMap<String, BidLogInfo>();
-    private final PMController controller;
-
-    public PMFullWidget(PMController controller) {
-        this.controller = controller;
-    }
 
     @Override
     public String getTitle(Locale locale) {
