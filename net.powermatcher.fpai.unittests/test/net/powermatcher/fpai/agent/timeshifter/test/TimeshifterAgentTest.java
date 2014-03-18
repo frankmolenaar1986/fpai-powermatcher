@@ -66,13 +66,18 @@ public class TimeshifterAgentTest extends TestCase {
         EnergyProfile profile = DEMAND_PROFILE;
 
         timeService.setAbsoluteTime(24 * 60 * 60 * 1000);
-        for (int i = 0; i < 10; i++) {
-            testSingleRun(profile);
-            timeService.stepInTime(1, TimeUnit.MINUTES);
-        }
+
+        testWaitUntilMustRun(profile);
+        timeService.stepInTime(1, TimeUnit.MINUTES);
+
+        testWaitUntilMustRun(profile);
+        timeService.stepInTime(1, TimeUnit.MINUTES);
+
+        testWaitUntilMustRun(profile);
+        timeService.stepInTime(1, TimeUnit.MINUTES);
     }
 
-    private void testSingleRun(EnergyProfile profile) {
+    private void testWaitUntilMustRun(EnergyProfile profile) {
         Date from = timeService.getDate();
         Date deadline = TimeUtil.add(from, START_WINDOW);
         Date end = TimeUtil.add(deadline, profile.getDuration());
@@ -95,17 +100,18 @@ public class TimeshifterAgentTest extends TestCase {
 
             // assure step bid issued
             assertStepBid(lastBid(), profile);
-            // assert the device isn't commanded to start yet (no allocation is sent or its total energy is zero)
-            assertTrue(lastAllocation() == null || lastAllocation().getEnergyProfile()
-                                                                   .getTotalEnergy()
-                                                                   .equals(ZERO_ENERGY));
+            // assert the device isn't commanded to start yet
+            // (no allocation is sent, ends in the past or its total energy is zero)
+            Allocation lastAllocation = lastAllocation();
+            assertTrue(lastAllocation == null || getEnd(lastAllocation).before(timeService.getDate())
+                       || lastAllocation.getEnergyProfile().getTotalEnergy().equals(ZERO_ENERGY));
         }
 
         // assert that a bid is issued at/before the deadline
         stepInTime(1, TimeUnit.MINUTES);
         updateControlSpaceAndPrice(cs1, MAX_PRICE);
 
-        Date start = timeService.getDate();
+        Date start = deadline;
         assertStarted(manager.getCurrentControlSpace(), lastAllocation());
 
         // step through time until end
@@ -126,7 +132,7 @@ public class TimeshifterAgentTest extends TestCase {
         }
 
         stepInTime(1, TimeUnit.MINUTES);
-        updateControlSpaceAndPrice(cs1, MAX_PRICE);
+        updateControlSpaceAndPrice(null, MAX_PRICE);
         assertFlatBidWithValue(lastBid(), ZERO_POWER);
     }
 
@@ -138,20 +144,20 @@ public class TimeshifterAgentTest extends TestCase {
         timeService.setAbsoluteTime(testStartTime);
 
         Date validFrom = new Date(testStartTime);
-        Date before = TimeUtil.add(validFrom, START_WINDOW);
+        Date deadline = TimeUtil.add(validFrom, START_WINDOW);
         Measurable<Duration> profileDuration = profile.getDuration();
-        Date validThru = TimeUtil.add(before, profileDuration);
+        Date validThru = TimeUtil.add(deadline, profileDuration);
 
         TimeShifterControlSpaceBuilder builder = new TimeShifterControlSpaceBuilder();
         builder.setApplianceId(RESOURCE_ID);
 
         builder.setValidFrom(validFrom);
         builder.setValidThru(validThru);
-        builder.setExpirationTime(before);
+        builder.setExpirationTime(deadline);
 
         builder.setEnergyProfile(profile);
         builder.setStartAfter(validFrom);
-        builder.setStartBefore(before);
+        builder.setStartBefore(deadline);
 
         TimeShifterControlSpace controlSpace = builder.build();
 
@@ -165,25 +171,23 @@ public class TimeshifterAgentTest extends TestCase {
         executor.executePending();
         BidInfo bid = lastBid();
         BidAnalyzer.assertFlatBidWithValue(bid, ZERO_POWER);
-        Assert.assertNull(manager.getLastAllocation());
+        Assert.assertNull(lastAllocation());
 
-        // startBefore == now
+        // startBefore == now + 1 minute
         // assert that the resource has started (allocation and must-run bid with initial power exists)
-        timeService.setAbsoluteTime(before.getTime());
-        // FIXME this is now required to trigger allocation update, it shouldn't: https://tf.tno.nl/sf/go/artf46488
-        agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MARKET_BASIS.getMaximumPrice()));
-        timeService.stepInTime(60000);
+        timeService.setAbsoluteTime(deadline.getTime());
+        timeService.stepInTime(Measure.valueOf(1, MINUTE));
+        Date start = timeService.getDate();
         executor.executePending();
-        // manager.updateControlSpace(controlSpace);
         bid = lastBid();
         BidAnalyzer.assertFlatBidWithValue(bid, Measure.valueOf(PROFILE_VALUES[0], WATT));
-        assertStarted(controlSpace, manager.getLastAllocation());
+        assertStarted(controlSpace, lastAllocation());
 
         // We don't check if the device was started in time, because starting at the startBefore time is actually to
         // late. This is acceptable (the resource manager should also act in this situation).
 
         // check that the agent correctly behaves during the execution of the profile
-        assertCorrectMustRunBidding(profile, before, TimeUtil.add(before, profileDuration));
+        assertCorrectMustRunBidding(profile, start, TimeUtil.add(start, profileDuration));
     }
 
     public void testDemand() throws InterruptedException {
@@ -228,7 +232,7 @@ public class TimeshifterAgentTest extends TestCase {
         executor.executePending();
         BidInfo bid = lastBid();
         BidAnalyzer.assertFlatBidWithValue(bid, ZERO_POWER);
-        Assert.assertNull(manager.getLastAllocation());
+        Assert.assertNull(lastAllocation());
 
         // startAfter = now < startBefore
         // get the bid and assert it's initially still flat and that there is no allocation yet
@@ -236,7 +240,7 @@ public class TimeshifterAgentTest extends TestCase {
         executor.executePending();
         bid = lastBid();
         BidAnalyzer.assertFlatBidWithValue(bid, ZERO_POWER);
-        Assert.assertNull(manager.getLastAllocation());
+        Assert.assertNull(lastAllocation());
 
         // startAfter < now < startBefore
         // progress time to half-way and assert it's a step and that there is no allocation yet
@@ -244,7 +248,7 @@ public class TimeshifterAgentTest extends TestCase {
         executor.executePending();
         bid = lastBid();
         assertStepBid(bid, profile);
-        Assert.assertNull(manager.getLastAllocation());
+        Assert.assertNull(lastAllocation());
         double stepPrice = BidAnalyzer.getStepPrice(bid);
 
         // startAfter < now < startBefore
@@ -254,7 +258,7 @@ public class TimeshifterAgentTest extends TestCase {
         executor.executePending();
         bid = lastBid();
         assertStepBid(bid, profile);
-        Assert.assertNull(manager.getLastAllocation());
+        Assert.assertNull(lastAllocation());
         if (isDemand) {
             Assert.assertTrue(stepPrice < BidAnalyzer.getStepPrice(bid));
         } else {
@@ -270,7 +274,7 @@ public class TimeshifterAgentTest extends TestCase {
 
             bid = lastBid();
             assertStepBid(bid, profile);
-            Assert.assertNull(manager.getLastAllocation());
+            Assert.assertNull(lastAllocation());
         }
 
         // price low enough, assert started (allocation and must-run bid with initial power exists)
@@ -280,9 +284,9 @@ public class TimeshifterAgentTest extends TestCase {
         // we lower/raise the price by one extra, to give some room for price rounding in the PowerMatcher core
         price = isDemand ? price - 1 : price + 1;
         agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, price));
-
         executor.executePending();
-        Allocation allocation = manager.getLastAllocation(0);
+
+        Allocation allocation = lastAllocation();
         assertStarted(controlSpace, allocation);
         assertStartedInTime(controlSpace, allocation);
         bid = lastBid();
@@ -301,40 +305,45 @@ public class TimeshifterAgentTest extends TestCase {
     }
 
     private void assertCorrectMustRunBidding(EnergyProfile profile, Date startTime, Date endTime) {
-        BidInfo bid;
         // progress time and expose the agent to various prices
         // and assert no new allocations are sent and the must-run bid follows the profile
-        while (nowIsBefore(endTime)) {
+        for (; nowIsBefore(endTime); timeService.stepInTime(1, TimeUnit.MINUTES)) {
             for (double p = MARKET_BASIS.getMinimumPrice(); p <= MARKET_BASIS.getMaximumPrice(); p += 1.5) {
                 agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, p));
                 executor.executePending();
 
-                Assert.assertNull(manager.getLastAllocation());
-                bid = lastBid();
-                BidAnalyzer.assertFlatBidWithValue(bid, getCurrentDemand(timeService.getDate(), startTime, profile));
-            }
+                assertStarted(lastAllocation());
 
-            timeService.stepInTime(1, TimeUnit.MINUTES);
+                BidAnalyzer.assertFlatBidWithValue(lastBid(),
+                                                   getCurrentDemand(timeService.getDate(), startTime, profile));
+            }
         }
 
         // progress time even further and assert the bid ends with a must-off bid
         timeService.stepInTime(1, TimeUnit.MINUTES);
         executor.executePending();
-        bid = lastBid();
-        BidAnalyzer.assertFlatBidWithValue(bid, ZERO_POWER);
-        Assert.assertNull(manager.getLastAllocation());
+        BidAnalyzer.assertFlatBidWithValue(lastBid(), ZERO_POWER);
+        assertStopped(lastAllocation());
+    }
+
+    private void assertStarted(Allocation allocation) {
+        // assert an allocation exists
+        Assert.assertNotNull(allocation);
+
+        // assert the time is the current time
+        Date start = allocation.getStartTime();
+        Date end = getEnd(allocation);
+        Date now = timeService.getDate();
+        Assert.assertTrue("Allocation starts in the future", now.getTime() >= start.getTime());
+        Assert.assertTrue("Allocation ends in the past", now.getTime() <= end.getTime());
     }
 
     private void assertStarted(TimeShifterControlSpace controlSpace, Allocation allocation) {
-        // assert an allocation exists
-        Assert.assertNotNull(allocation);
+        assertStarted(allocation);
 
         // assert the appliance id and control space are there
         Assert.assertEquals(manager.getResourceId(), allocation.getResourceId());
         Assert.assertEquals(controlSpace.getId(), allocation.getControlSpaceId());
-
-        // assert the time is the current time
-        Assert.assertTrue(timeService.getDate().getTime() >= allocation.getStartTime().getTime());
 
         // assert the energy profile is exactly as in the control space
         Assert.assertEquals(controlSpace.getEnergyProfile(), allocation.getEnergyProfile());
@@ -350,9 +359,28 @@ public class TimeshifterAgentTest extends TestCase {
         Assert.assertTrue(startBefore.after(startTime) || startBefore.equals(startTime));
     }
 
+    private void assertStopped(Allocation allocation) {
+        if (allocation == null) {
+            return;
+        }
+
+        // assert the allocation ends in the past
+        Assert.assertTrue(TimeUtil.add(allocation.getStartTime(), allocation.getEnergyProfile().getDuration())
+                                  .before(timeService.getDate()));
+    }
+
     private void stepInTime(long value, TimeUnit unit) {
         executor.executePending();
         timeService.stepInTime(1, unit);
+        executor.executePending();
+    }
+
+    private void updateControlSpaceAndPrice(TimeShifterControlSpace controlSpace, PriceInfo price) {
+        executor.executePending();
+
+        manager.updateControlSpace(controlSpace);
+        agent.updatePriceInfo(price);
+
         executor.executePending();
     }
 
@@ -372,13 +400,8 @@ public class TimeshifterAgentTest extends TestCase {
         return parent.getLastBid(agent.getId());
     }
 
-    private void updateControlSpaceAndPrice(TimeShifterControlSpace controlSpace, PriceInfo price) {
-        executor.executePending();
-    
-        manager.updateControlSpace(controlSpace);
-        agent.updatePriceInfo(price);
-    
-        executor.executePending();
+    private Date getEnd(Allocation allocation) {
+        return TimeUtil.add(allocation.getStartTime(), allocation.getEnergyProfile().getDuration());
     }
 
     private EnergyProfile subProfile(EnergyProfile profile, Date deadline, Date end) {
@@ -391,7 +414,6 @@ public class TimeshifterAgentTest extends TestCase {
         return profile.getElementForOffset(offset).getAveragePower();
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public void setUp() throws Exception {
         Properties cfg = new Properties();
