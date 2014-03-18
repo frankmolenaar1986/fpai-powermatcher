@@ -70,7 +70,7 @@ public class BidAnalyzer {
      */
     public static void assertStepBid(BidInfo bid, Measurable<Power> power1, Measurable<Power> power2, Double price) {
         assertNotNull(bid);
-        assertTrue(isStepBid(bid, power1, power2, price));
+        assertTrue("Bid is not a step bid", isStepBid(bid, power1, power2, price));
     }
 
     private static boolean isStepBid(BidInfo bid, Measurable<Power> power1, Measurable<Power> power2, Double price) {
