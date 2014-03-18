@@ -32,6 +32,10 @@ public class MockTimeService implements TimeService {
         currentTime = time;
     }
 
+    public void setAbsoluteTime(Date from) {
+        setAbsoluteTime(from.getTime());
+    }
+
     public void stepInTime(long stepMs) {
         currentTime += stepMs;
     }
