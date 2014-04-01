@@ -83,6 +83,11 @@ public class TimeshifterAgent extends FPAIAgent<TimeShifterControlSpace> impleme
             lastAllocation = new Allocation(controlSpace, now, controlSpace.getEnergyProfile());
         }
 
+        // TODO in this implementation, on every invocation of createAllocation, the current allocation (if any) is
+        // returned. A possibly cleaner solution is to only return the allocation when it is created. However, it must
+        // be considered that a ControllableResource didn't receive the allocation (there is no ACK on this level). From
+        // that perspective emiting the current allocation *is* desirable.
+
         return lastAllocation;
     }
 
