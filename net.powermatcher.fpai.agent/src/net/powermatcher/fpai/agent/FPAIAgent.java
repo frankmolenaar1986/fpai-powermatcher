@@ -75,13 +75,7 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
          * allocations.
          */
 
-        // PriceInfo priceInfo = getLastPriceInfo();
-        // Date priceDate = lastPriceDate;
-        //
-        // if (priceInfo != null && priceDate != null
-        // && priceDate.getTime() + getUpdateInterval() * 1000 < getTimeSource().currentTimeMillis()) {
         this.updateAllocation();
-        // }
     }
 
     @Override

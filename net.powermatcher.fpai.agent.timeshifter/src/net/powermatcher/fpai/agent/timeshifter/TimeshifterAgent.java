@@ -91,31 +91,6 @@ public class TimeshifterAgent extends FPAIAgent<TimeShifterControlSpace> impleme
         return lastAllocation;
     }
 
-    // @Override
-    // protected synchronized void doBidUpdate() {
-    // super.doBidUpdate();
-    //
-    // // if (lastAllocation != null) {
-    // publishBidUpdate(createBid(lastControlSpace, getCurrentMarketBasis()));
-    // // }
-    // }
-
-    // /**
-    // * Publish regularly a new bid when the device is started, even if there was no new ControlSpace. The
-    // EnergyProfile
-    // * used to create a must-run bid can change over time.
-    // *
-    // * Overrides the run in FPAIAgent
-    // */
-    // @Override
-    // public void run() {
-    // super.run();
-    //
-    // // if (lastAllocation != null) {
-    // publishBidUpdate(createBid(lastControlSpace, getCurrentMarketBasis()));
-    // // }
-    // }
-
     @Override
     public BidInfo createBid(TimeShifterControlSpace controlSpace, MarketBasis marketBasis) {
         assert controlSpace != null;
