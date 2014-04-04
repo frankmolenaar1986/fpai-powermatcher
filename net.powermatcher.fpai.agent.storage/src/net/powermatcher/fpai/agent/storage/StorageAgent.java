@@ -76,13 +76,18 @@ public class StorageAgent extends FPAIAgent<StorageControlSpace> implements
         if (currentChargeSpeedWatt == 0 && targetChargeSpeedWatt != 0) {
             // Turn ON
             logDebug("Turning device ON");
-            underMinTurnOnUntil = new Date(getTimeSource().currentTimeMillis() + controlSpace.getMinOnPeriod()
-                                                                                             .longValue(MILLI(SECOND)));
+            if (controlSpace.getMinOnPeriod().doubleValue(SECOND) > 1) {
+                //
+                underMinTurnOnUntil = new Date(getTimeSource().currentTimeMillis() + controlSpace.getMinOnPeriod()
+                                                                                                 .longValue(MILLI(SECOND)));
+            }
         } else if (currentChargeSpeedWatt != 0 && targetChargeSpeedWatt == 0) {
             // Turn OFF
             logDebug("Turning device OFF");
-            underMinTurnOffUntil = new Date(getTimeSource().currentTimeMillis() + controlSpace.getMinOffPeriod()
-                                                                                              .longValue(MILLI(SECOND)));
+            if (controlSpace.getMinOffPeriod().doubleValue(SECOND) > 1) {
+                underMinTurnOffUntil = new Date(getTimeSource().currentTimeMillis() + controlSpace.getMinOffPeriod()
+                                                                                                  .longValue(MILLI(SECOND)));
+            }
         }
 
         currentChargeSpeedWatt = targetChargeSpeedWatt;
