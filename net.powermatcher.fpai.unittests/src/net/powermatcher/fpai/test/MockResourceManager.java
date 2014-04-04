@@ -34,7 +34,7 @@ public class MockResourceManager<CS extends ControlSpace> implements
     private final Class<CS> controlSpaceType;
 
     /** the last / current control space */
-    private ControlSpace controlSpace;
+    private CS controlSpace;
 
     public MockResourceManager(String applianceId, Class<CS> controlSpaceType) {
         this.applianceId = applianceId;
@@ -45,7 +45,7 @@ public class MockResourceManager<CS extends ControlSpace> implements
         return applianceId;
     }
 
-    public ControlSpace getCurrentControlSpace() {
+    public CS getCurrentControlSpace() {
         return controlSpace;
     }
 
