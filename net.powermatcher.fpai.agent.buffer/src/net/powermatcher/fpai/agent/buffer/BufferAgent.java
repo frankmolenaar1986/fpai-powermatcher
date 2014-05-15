@@ -341,7 +341,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         }
 
         // if we're turning on or off, calculate the time at which we can switch again
-        if (currentTargetPower == 0 && targetPower != 0) {
+        if (currentTargetPower < 0.01 && currentTargetPower > -0.01 && targetPower != 0) {
             logDebug("Turning device ON for at least " + controlSpace.getMinOnPeriod());
             mustRunUntil = TimeUtil.add(now, controlSpace.getMinOnPeriod());
         } else if (currentTargetPower != 0 && targetPower == 0) {
