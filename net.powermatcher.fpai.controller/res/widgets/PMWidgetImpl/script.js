@@ -1,33 +1,26 @@
 $(window).load(function() {
 	w = new widget("update", 1000, function(data) {
 		$("#loading").detach();
-		$("p").show();
 		$(".error").hide();
 		$("#marketprice").text(data.marketPrice);
 		$("#timestamp").text(data.timestamp);
 		
-		diff = data.agentTypes.length - $("#agents p").length;
-		if(diff > 0) {
-			for(i = 0; i < diff; i++) {
-				$("#agents").append("<p><label>...</label> <span>...</span></p>");
-			}
-		} else {
-			for(i = 0; i > diff; i--) {
-				$("#agents p").last().detach();
-			}
-		}	
+		$("#agents").empty();
 		
-		labels = $("#agents p").children("label");
-		spans = $("#agents p").children("span");
-		for(i = 0; i < labels.length; i++) {
-			labels[i].innerHTML = data.agentTypes[i];
-			spans[i].innerHTML = data.demands[i];
+		for(type in data.demands){
+			i = 1;
+			for(id in data.demands[type]){
+				$("#agents").append("<p><label>"+ type +" "+ i +"</label> <span>" + data.demands[type][id] + "</span></p>");
+				i++;
+			}
 		}
+		
+		$("p").show();
 	});
 	
 	w.error = function(msg) {
 		$("#loading").detach();
-		$("p").hide();
+		// $("p").hide();
 		$(".error").show();
 		$(".error").text(msg);
 	}

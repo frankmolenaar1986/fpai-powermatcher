@@ -1,12 +1,10 @@
 package net.powermatcher.fpai.controller;
 
 import java.text.DateFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.powermatcher.core.agent.framework.Agent;
@@ -36,32 +34,30 @@ public class PMWidgetImpl implements PMWidget {
     }
 
     public Update update(Locale locale) {
-        Update update = new Update(latestPrice == null ? 0 : latestPrice.getCurrentPrice(),
-                                   latestPrice == null ? "No price received yet"
-                                                      : DateFormat.getTimeInstance(DateFormat.LONG, locale)
-                                                                  .format(latestPrice.getTimestamp()));
+        String price = latestPrice == null ? "no price yet" : String.format("%1.2f", latestPrice.getCurrentPrice());
+        String timestamp = latestPrice == null ? "" : DateFormat.getTimeInstance(DateFormat.LONG, locale)
+                                                                .format(latestPrice.getTimestamp());
+        Update update = new Update(price, timestamp);
 
         for (Agent agent : controller.getAgentList()) {
             BidLogInfo lastBid = latestBids.get(agent.getId());
             String type = getAgentLabel(agent);
-            String demands = lastBid == null ? "No bid done yet" : getDemands(lastBid);
-            update.addAgent(type, demands);
+            String demands = lastBid == null ? "no bid yet" : getDemands(lastBid);
+            update.addAgent(type, agent.getId(), demands);
         }
 
         return update;
     }
 
-    private String getDemands(BidLogInfo lastBid) {
-        SortedSet<Double> result = new TreeSet<Double>();
-        for (double demand : lastBid.getBidInfo().getDemand()) {
-            result.add(demand);
-        }
-        if (result.size() > 3) {
-            double min = result.first();
-            double max = result.last();
-            return "(" + min + "-" + max + ") W";
+    private String getDemands(BidLogInfo bid) {
+        double[] demand = bid.getBidInfo().getDemand();
+        double first = demand[0] / 1000;
+        double last = demand[demand.length - 1] / 1000;
+
+        if (Math.abs(first - last) < .0001) {
+            return String.format("%.2f kW", first);
         } else {
-            return result.toString() + " W";
+            return String.format("%.2f - %.2f kW", last, first);
         }
     }
 
@@ -76,30 +72,37 @@ public class PMWidgetImpl implements PMWidget {
     }
 
     public static class Update {
-        private final List<String> agentTypes;
-        private final List<String> demands;
+        private final SortedMap<String, SortedMap<String, String>> demands;
         private final String marketPrice;
         private final String timestamp;
 
-        public Update(double price, String timestamp) {
-            marketPrice = String.format("%1.2f", price);
+        public Update(String marketPrice, String timestamp) {
+            this.marketPrice = marketPrice;
             this.timestamp = timestamp;
-            agentTypes = new ArrayList<String>();
-            demands = new ArrayList<String>();
+            demands = new TreeMap<String, SortedMap<String, String>>();
         }
 
-        public void addAgent(String type, String demand) {
-            agentTypes.add(type);
-            demands.add(demand);
+        public void addAgent(String type, String id, String demand) {
+            SortedMap<String, String> d = demands.get(type);
+
+            if (d == null) {
+                demands.put(type, d = new TreeMap<String, String>());
+            }
+
+            d.put(id, demand);
         }
 
-        public List<String> getAgentTypes() {
-            return agentTypes;
-        }
-
-        public List<String> getDemands() {
+        public SortedMap<String, SortedMap<String, String>> getDemands() {
             return demands;
         }
+
+        // public List<String> getAgentTypes() {
+        // return agentTypes;
+        // }
+        //
+        // public List<String> getDemands() {
+        // return demands;
+        // }
 
         public String getMarketPrice() {
             return marketPrice;
