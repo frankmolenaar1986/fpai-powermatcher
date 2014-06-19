@@ -18,9 +18,9 @@ import org.flexiblepower.time.TimeService;
 
 /**
  * Abstract class for PowerMatcher agents on the FPAI framework. FPAIAgents are created by the PMController
- * 
+ *
  * @author TNO
- * 
+ *
  * @param <CS>
  *            The type of ControlSpace this agent represents
  */
@@ -56,7 +56,7 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
     /**
      * This method is called doBidUpdate, but actually it's just a method called periodically (every
      * {@link #getUpdateInterval()} seconds). {@link FPAIAgent}s update both their bid and allocation
-     * 
+     *
      * @see net.powermatcher.core.agent.framework.Agent#doBidUpdate()
      */
     @Override
@@ -67,15 +67,6 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
         if (controlSpaceCache != null) {
             publishBidUpdate();
         }
-
-        /*
-         * PowerMatcher doesn't guarantee price updates. A new ControlSpace triggers a bid update; a price update can
-         * trigger an allocation. Since price updates aren't guaranteed by PowerMatcher, we have to make sure that the
-         * updatePriceInfo method is called once in a while so the agent always has an opportunity to create
-         * allocations.
-         */
-
-        this.updateAllocation();
     }
 
     @Override
@@ -153,7 +144,7 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
 
     /**
      * Bind this controller to a controllableResource
-     * 
+     *
      * @param controllableResource
      */
     public synchronized void bind(ControllableResource<CS> controllableResource) {
@@ -164,7 +155,7 @@ public abstract class FPAIAgent<CS extends ControlSpace> extends Agent implement
 
     /**
      * Unbind this controller from a controllableResource
-     * 
+     *
      * @param controllableResource
      */
     public synchronized void unbind(ControllableResource<CS> controllableResource) {
