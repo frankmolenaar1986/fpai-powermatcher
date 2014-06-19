@@ -98,7 +98,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
 
     /**
      * The default bid strategy.
-     * 
+     *
      * @param marketBasis
      *            The market basis to use for creating the bid.
      * @param controlSpace
@@ -119,7 +119,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
 
     /**
      * The default bid strategy.
-     * 
+     *
      * @param marketBasis
      *            The market basis to use for creating the bid.
      * @param controlSpace
@@ -185,7 +185,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
     /**
      * Create a sloped bid based on a relative turn on price. The bidBandWidth field is used to determine the width of
      * the 'flexible range' inside the bid.
-     * 
+     *
      * @param marketBasis
      *            The market basis by which the price indices will be bounded.
      * @param controlSpace
@@ -209,7 +209,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
     /**
      * Create a sloped bid determined by the indices of the 'flexible range' of the bid. The 'flexible range' is the
      * part of the bid where the device can be between full-power and off.
-     * 
+     *
      * @param marketBasis
      *            The market basis by which the price indices will be bounded.
      * @param controlSpace
@@ -253,7 +253,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         BidInfo bid = new BidInfo(marketBasis, pricePoints);
 
         // constrain the bid to the possibilities of the buffer to be charged with
-        return BidUtil.roundBidToPowerConstraintList(bid, chargeSpeed, true);
+        return BidUtil.roundBidToPowerConstraintList(bid, chargeSpeed, false);
     }
 
     /**
@@ -330,7 +330,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         }
 
         // calculate the target power given the last bid (if any in that case power is 0)
-        double targetPower = lastBid == null ? 0 : lastBid.getDemand(newPriceInfo.getCurrentPrice());
+        double targetPower = getTargetPower(lastBid, newPriceInfo);
 
         // calculate the currently applicable target power given the last allocation
         double currentTargetPower = getCurrentlyAllocatedPower();
@@ -364,6 +364,29 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         // return the allocation and remember it
         EnergyProfile energyProfile = EnergyProfile.create().add(duration, targetEnergyVolume).build();
         return lastAllocation = new Allocation(controlSpace, now, energyProfile);
+    }
+
+    private double getTargetPower(BidInfo bid, PriceInfo price) {
+        if (bid == null) {
+            return 0;
+        }
+
+        double[] demand = bid.getDemand();
+
+        MarketBasis market = price.getMarketBasis();
+        double index = ((price.getCurrentPrice() - market.getMinimumPrice()) / (market.getMaximumPrice() - market.getMinimumPrice())) * (market.getPriceSteps() - 1);
+
+        int highDemandIndex = (int) Math.floor(index);
+        int lowDemandIndex = (int) Math.ceil(index);
+
+        double highDemand = demand[highDemandIndex];
+        double lowDemand = demand[lowDemandIndex];
+
+        double weight = index - highDemandIndex;
+
+        double targetDemand = lowDemand + (highDemand - lowDemand) * weight;
+
+        return targetDemand;
     }
 
     private boolean isOnByAllocation() {
