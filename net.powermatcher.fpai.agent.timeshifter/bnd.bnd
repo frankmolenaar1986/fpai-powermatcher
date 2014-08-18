@@ -7,6 +7,7 @@ Export-Package: net.powermatcher.fpai.agent.timeshifter
 	net.powermatcher.core.scheduler.service;version=latest,\
 	net.powermatcher.core.adapter.service;version=latest,\
 	flexiblepower.api;version=latest,\
-	biz.aQute.bnd.annotation;version=latest
+	biz.aQute.bnd.annotation;version=latest,\
+	flexiblepower.api.ext
 Service-Component: *
 -sign: fps

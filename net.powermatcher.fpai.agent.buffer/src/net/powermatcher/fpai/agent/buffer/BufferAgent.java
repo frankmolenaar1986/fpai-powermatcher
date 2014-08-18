@@ -31,6 +31,7 @@ import net.powermatcher.fpai.agent.buffer.BufferAgent.Config;
 import org.flexiblepower.rai.Allocation;
 import org.flexiblepower.rai.BufferControlSpace;
 import org.flexiblepower.rai.values.Constraint;
+import org.flexiblepower.rai.values.ConstraintList;
 import org.flexiblepower.rai.values.EnergyProfile;
 import org.flexiblepower.rai.values.EnergyProfile.Element;
 import org.flexiblepower.time.TimeUtil;
@@ -84,8 +85,11 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
 
         // check if there is a minimum charge speed and apply it
         Measurable<Power> minimumChargeSpeed = calculateMinimumChargeSpeed(controlSpace);
-        if (minimumChargeSpeed.doubleValue(WATT) > 0) {
+        if (isConsumingBuffer(controlSpace) && minimumChargeSpeed.doubleValue(WATT) > 0) {
             bid = BidUtil.setMinimumDemand(bid, minimumChargeSpeed);
+        }
+        if (isProducingBuffer(controlSpace) && minimumChargeSpeed.doubleValue(WATT) < 0) {
+            bid = BidUtil.setMaximumDemand(bid, minimumChargeSpeed);
         }
 
         // return the bid;
@@ -94,7 +98,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
 
     /**
      * The default bid strategy.
-     * 
+     *
      * @param marketBasis
      *            The market basis to use for creating the bid.
      * @param controlSpace
@@ -102,21 +106,20 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
      * @return The bid based on the given flexibility.
      */
     private BidInfo createBidBySoC(MarketBasis marketBasis, BufferControlSpace controlSpace) {
-        // select the price (index) at which the buffer will be charged at minimum power (or is off if possible)
-        // this price is inversely proportional to the state of charge, i.e. the higher the SoC the lower the price must
-        // be for the buffer to charge
-        int minDemandPrice = (int) ((1 - controlSpace.getStateOfCharge()) * marketBasis.getPriceSteps());
-
-        // The bid is shaped as a slope over a range in the total price range of the market
-        int maxDemandPrice = (int) (minDemandPrice - (marketBasis.getPriceSteps() * bidBandWidth));
-
-        // create the bid respecting the bounds of the market basis and control space
-        return createSlopedBid(marketBasis, controlSpace, minDemandPrice, maxDemandPrice);
+        double bandWidthCenter;
+        if (isConsumingBuffer(controlSpace)) {
+            // Determine the 'decision-price' in a range of [0,1]
+            bandWidthCenter = 1 - controlSpace.getStateOfCharge();
+        } else {
+            // Determine the 'decision-price' in a range of [0,1]
+            bandWidthCenter = controlSpace.getStateOfCharge();
+        }
+        return createSlopedBid(marketBasis, controlSpace, bandWidthCenter);
     }
 
     /**
      * The default bid strategy.
-     * 
+     *
      * @param marketBasis
      *            The market basis to use for creating the bid.
      * @param controlSpace
@@ -132,22 +135,23 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
             return createBidBySoC(marketBasis, controlSpace);
         }
 
+        ConstraintList<Power> chargeSpeed = controlSpace.getChargeSpeed();
+
         // calculate the amount to charge
         double deltaEnergyJoule = deltaSoC * controlSpace.getTotalCapacity().doubleValue(JOULE);
 
-        // calculate the time required to charge to the target state of charge at maximum power
-        double dischargeWatt = controlSpace.getSelfDischarge().doubleValue(WATT);
-        double maxChargePowerWatt = controlSpace.getChargeSpeed().getMaximum().doubleValue(WATT);
-        double fastestChargeTimeSecond = deltaEnergyJoule / (maxChargePowerWatt - dischargeWatt);
-
         // calculate the time frame available
-        double timeToDeadlineMS = getTimeSource().currentTimeMillis() - controlSpace.getTargetTime().getTime();
+        double timeToDeadlineMS = controlSpace.getTargetTime().getTime() - getTimeSource().currentTimeMillis();
 
         // if past the deadline ...
         if (timeToDeadlineMS <= 0) {
             if (deltaSoC > 0) {
                 // and target SoC not yet achieved, charge as fast as possible (minimize 'damage')
-                return BidUtil.createFlatBid(marketBasis, controlSpace.getChargeSpeed().getMaximum());
+                if (isProducingBuffer(controlSpace)) {
+                    return BidUtil.createFlatBid(marketBasis, chargeSpeed.getMinimum());
+                } else {
+                    return BidUtil.createFlatBid(marketBasis, chargeSpeed.getMaximum());
+                }
             } else {
                 // otherwise use normal bidding strategy
                 return createBidBySoC(marketBasis, controlSpace);
@@ -155,60 +159,101 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         }
 
         // the price for which the maximum demand is desirable is inversely proportional to the ratio between the
-        // minimum time required to cover the delta SoC (at max power) and the time until the target deadline. I.e. the
-        // closer to a must-run situation, the higher the accepted price.
-        int maxDemandPrice = (int) (((fastestChargeTimeSecond * 1000) / timeToDeadlineMS) * marketBasis.getPriceSteps());
-        // the bid is slope shaped with a configured width, here (with a target), if the price is higher than
-        // maxDemandPrice, it may still be 'acceptable', but at a lower charging power
-        // i.e. the width of the slope influences the eagerness to charge the buffer, the wider the slope, the more
-        // eager the strategy
-        int minDemandPrice = (int) (maxDemandPrice + marketBasis.getPriceSteps() * bidBandWidth);
+        // minimum time required to cover the delta SoC (at max power) and the time until the target deadline.
+        // I.e. the closer to a must-run situation, the higher the accepted price.
+        double maxChargePowerWatt;
+        double dischargeWatt = controlSpace.getSelfDischarge().doubleValue(WATT);
+        // calculate the time required to charge to the target state of charge at maximum power
+        if (isConsumingBuffer(controlSpace)) {
+            maxChargePowerWatt = chargeSpeed.getMaximum().doubleValue(WATT);
+        } else {
+            maxChargePowerWatt = -chargeSpeed.getMinimum().doubleValue(WATT);
+        }
+        double fastestChargeTimeSecond = deltaEnergyJoule / (maxChargePowerWatt - dischargeWatt);
+        double fastestChargeTimeMS = fastestChargeTimeSecond * 1000;
+        double relativeTurnOnPrice = fastestChargeTimeMS / timeToDeadlineMS;
+        if (isProducingBuffer(controlSpace)) {
+            relativeTurnOnPrice = 1 - relativeTurnOnPrice;
+        }
+        // make sure the relativeTurnOnPrice is in the range [0,1]
+        relativeTurnOnPrice = Math.max(0, Math.min(1, relativeTurnOnPrice));
 
         // create the bid respecting the bounds of the market basis and control space
-        return createSlopedBid(marketBasis, controlSpace, minDemandPrice, maxDemandPrice);
+        return createSlopedBid(marketBasis, controlSpace, relativeTurnOnPrice);
     }
 
     /**
-     * Create a sloped bid determined by the price indices for which the maximum / minimum demand should be expressed in
-     * the bid - respecting the bounds of the market basis and control space.
-     * 
+     * Create a sloped bid based on a relative turn on price. The bidBandWidth field is used to determine the width of
+     * the 'flexible range' inside the bid.
+     *
      * @param marketBasis
      *            The market basis by which the price indices will be bounded.
-     * @param bufferControlSpace
+     * @param controlSpace
      *            The buffer control space which
-     * @param minDemandPriceIdx
-     *            The price for which minimum demand is desirable.
-     * @param maxDemandPriceIdx
-     *            The price for which maximum demand is desirable.
-     * @return The sloped bid based on the given prices and the price bounds in the market basis and the power
-     *         constraints in the control space.
+     * @param relativeTurnOnPrice
+     *            The price where device should turn on or off in the range [0,1]
+     * @return The sloped bid
+     */
+    private BidInfo
+            createSlopedBid(MarketBasis marketBasis, BufferControlSpace controlSpace, double relativeTurnOnPrice) {
+        // Determine the local bandwidth. The bandwidth shrinks when the relativeTurnOnPrice comes close to the border
+        // of the bid.
+        double bandWidth = Math.min(relativeTurnOnPrice * 2, Math.min((1 - relativeTurnOnPrice) * 2, bidBandWidth));
+        int rangeLowerIdx = (int) ((relativeTurnOnPrice - (bandWidth / 2)) * (marketBasis.getPriceSteps() - 1));
+        int rangeUpperIdx = (int) ((relativeTurnOnPrice + (bandWidth / 2)) * (marketBasis.getPriceSteps() - 1));
+
+        // create the bid respecting the bounds of the market basis and control space
+        return createSlopedBid(marketBasis, controlSpace, rangeLowerIdx, rangeUpperIdx);
+    }
+
+    /**
+     * Create a sloped bid determined by the indices of the 'flexible range' of the bid. The 'flexible range' is the
+     * part of the bid where the device can be between full-power and off.
+     *
+     * @param marketBasis
+     *            The market basis by which the price indices will be bounded.
+     * @param controlSpace
+     *            The buffer control space which
+     * @param rangeLowerIdx
+     *            The index where the flexible range starts
+     * @param rangeUpperIdx
+     *            The index where the flexible range ends
+     * @return The sloped bid
      */
     private BidInfo createSlopedBid(MarketBasis marketBasis,
-                                    BufferControlSpace bufferControlSpace,
-                                    int minDemandPriceIdx,
-                                    int maxDemandPriceIdx) {
-        // if the maximum demand is at or beyond the price range, we need to generate a must run bid
-        if (maxDemandPriceIdx >= marketBasis.getPriceSteps()) {
-            return BidUtil.createFlatBid(marketBasis, bufferControlSpace.getChargeSpeed().getMaximum());
-        }
+                                    BufferControlSpace controlSpace,
+                                    int rangeLowerIdx,
+                                    int rangeUpperIdx) {
+        assert rangeLowerIdx <= rangeUpperIdx;
+        assert rangeLowerIdx >= 0;
+        assert rangeUpperIdx < marketBasis.getPriceSteps();
 
-        // the min and max prices are bound by the price basis
-        maxDemandPriceIdx = Math.max(0, maxDemandPriceIdx);
-        minDemandPriceIdx = Math.min(marketBasis.getPriceSteps(), minDemandPriceIdx);
+        ConstraintList<Power> chargeSpeed = controlSpace.getChargeSpeed();
 
         // get the max and min demand possible
-        double maxDemand = bufferControlSpace.getChargeSpeed().getMaximum().doubleValue(WATT);
-        double minDemand = bufferControlSpace.getChargeSpeed().getMinimum().doubleValue(WATT);
+        double maxDemand = chargeSpeed.getMaximum().doubleValue(WATT);
+        double minDemand = chargeSpeed.getMinimum().doubleValue(WATT);
 
+        // Add the option of being off
+        if (isProducingBuffer(controlSpace)) {
+            maxDemand = 0;
+        } else {
+            minDemand = 0;
+        }
         // construct the bid via price points
-        PricePoint[] pricePoints = new PricePoint[] { new PricePoint(0, maxDemand),
-                                                     new PricePoint(maxDemandPriceIdx, maxDemand),
-                                                     new PricePoint(minDemandPriceIdx, minDemand),
-                                                     new PricePoint(minDemandPriceIdx, 0) };
+        PricePoint[] pricePoints;
+        if (rangeLowerIdx == marketBasis.getPriceSteps() - 1) {
+            // Without this check, the last element of the demand array would get the value minDemand
+            pricePoints = new PricePoint[] { new PricePoint(0, maxDemand) };
+        } else {
+            pricePoints = new PricePoint[] { new PricePoint(rangeLowerIdx, maxDemand),
+                                            new PricePoint(rangeUpperIdx, minDemand) };
+        }
+
         BidInfo bid = new BidInfo(marketBasis, pricePoints);
 
         // constrain the bid to the possibilities of the buffer to be charged with
-        return BidUtil.roundBidToPowerConstraintList(bid, bufferControlSpace.getChargeSpeed(), true);
+        return BidUtil.roundBidToPowerConstraintList(bid, chargeSpeed, false);
     }
 
     /**
@@ -219,8 +264,12 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
             // determined by the lowest power which is > 0
             for (Constraint<Power> c : bufferControlSpace.getChargeSpeed()) {
                 Measurable<Power> lowerBound = c.getLowerBound();
-                if (lowerBound.doubleValue(WATT) > 0) {
+                Measurable<Power> upperBound = c.getUpperBound();
+                if (isConsumingBuffer(bufferControlSpace) && lowerBound.doubleValue(WATT) > 0) {
                     return lowerBound;
+                }
+                if (isProducingBuffer(bufferControlSpace) && upperBound.doubleValue(WATT) < 0) {
+                    return upperBound;
                 }
             }
         }
@@ -281,7 +330,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         }
 
         // calculate the target power given the last bid (if any in that case power is 0)
-        double targetPower = lastBid == null ? 0 : lastBid.getDemand(newPriceInfo.getCurrentPrice());
+        double targetPower = getTargetPower(lastBid, newPriceInfo);
 
         // calculate the currently applicable target power given the last allocation
         double currentTargetPower = getCurrentlyAllocatedPower();
@@ -299,7 +348,7 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         }
 
         // if we're turning on or off, calculate the time at which we can switch again
-        if (currentTargetPower == 0 && targetPower != 0) {
+        if (currentTargetPower < 0.01 && currentTargetPower > -0.01 && targetPower != 0) {
             logDebug("Turning device ON for at least " + controlSpace.getMinOnPeriod());
             mustRunUntil = TimeUtil.add(now, controlSpace.getMinOnPeriod());
         } else if (currentTargetPower != 0 && targetPower == 0) {
@@ -315,6 +364,29 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
         // return the allocation and remember it
         EnergyProfile energyProfile = EnergyProfile.create().add(duration, targetEnergyVolume).build();
         return lastAllocation = new Allocation(controlSpace, now, energyProfile);
+    }
+
+    private double getTargetPower(BidInfo bid, PriceInfo price) {
+        if (bid == null) {
+            return 0;
+        }
+
+        double[] demand = bid.getDemand();
+
+        MarketBasis market = price.getMarketBasis();
+        double index = ((price.getCurrentPrice() - market.getMinimumPrice()) / (market.getMaximumPrice() - market.getMinimumPrice())) * (market.getPriceSteps() - 1);
+
+        int highDemandIndex = (int) Math.floor(index);
+        int lowDemandIndex = (int) Math.ceil(index);
+
+        double highDemand = demand[highDemandIndex];
+        double lowDemand = demand[lowDemandIndex];
+
+        double weight = index - highDemandIndex;
+
+        double targetDemand = lowDemand + (highDemand - lowDemand) * weight;
+
+        return targetDemand;
     }
 
     private boolean isOnByAllocation() {
@@ -397,8 +469,12 @@ public class BufferAgent extends FPAIAgent<BufferControlSpace> implements
     protected static boolean isConsumingBuffer(BufferControlSpace controlSpace) {
         for (Constraint<Power> c : controlSpace.getChargeSpeed()) {
             double upperWatt = c.getUpperBound().doubleValue(WATT);
-            if (upperWatt != 0) {
-                return upperWatt > 0;
+            if (upperWatt > 0) {
+                return true;
+            }
+            double lowerWatt = c.getLowerBound().doubleValue(WATT);
+            if (lowerWatt < 0) {
+                return false;
             }
         }
         // should not get here

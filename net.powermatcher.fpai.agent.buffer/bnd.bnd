@@ -1,4 +1,4 @@
-Bundle-Version: 1.0.0
+Bundle-Version: 1.0.1
 Export-Package: net.powermatcher.fpai.agent.buffer
 -buildpath: net.powermatcher.core.agent;version=latest,\
 	net.powermatcher.core.configurable;version=latest,\
@@ -7,6 +7,7 @@ Export-Package: net.powermatcher.fpai.agent.buffer
 	net.powermatcher.fpai.agent;version=latest,\
 	net.powermatcher.core.scheduler.service;version=latest,\
 	net.powermatcher.core.adapter.service;version=latest,\
-	biz.aQute.bnd.annotation;version=latest
+	biz.aQute.bnd.annotation;version=latest,\
+	flexiblepower.api.ext
 Service-Component: *
 -sign: fps

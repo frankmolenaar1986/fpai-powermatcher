@@ -16,6 +16,7 @@ import net.powermatcher.core.adapter.Adapter;
 import net.powermatcher.core.agent.concentrator.Concentrator;
 import net.powermatcher.core.agent.concentrator.framework.AbstractConcentrator;
 import net.powermatcher.core.agent.framework.Agent;
+import net.powermatcher.core.agent.framework.config.AgentConfiguration;
 import net.powermatcher.core.agent.framework.service.AgentService;
 import net.powermatcher.core.agent.marketbasis.adapter.MarketBasisAdapter;
 import net.powermatcher.core.configurable.BaseConfiguration;
@@ -31,6 +32,7 @@ import net.powermatcher.fpai.agent.storage.StorageAgent;
 import net.powermatcher.fpai.agent.timeshifter.TimeshifterAgent;
 import net.powermatcher.fpai.agent.uncontrolled.UncontrolledAgent;
 import net.powermatcher.fpai.controller.PMController.Config;
+import net.powermatcher.fpai.fullwidget.PMFullWidget;
 
 import org.flexiblepower.control.ControllerManager;
 import org.flexiblepower.rai.BufferControlSpace;
@@ -55,7 +57,7 @@ import aQute.bnd.annotation.component.Reference;
 import aQute.bnd.annotation.metatype.Configurable;
 import aQute.bnd.annotation.metatype.Meta;
 
-@Component(immediate = true, designateFactory = Config.class)
+@Component(immediate = true, designateFactory = Config.class, provide = { ControllerManager.class, PMController.class })
 public class PMController implements ControllerManager {
     interface Config {
         @Meta.AD(deflt = "pvpanel,dishwasher,refrigerator,battery", cardinality = Integer.MAX_VALUE)
@@ -84,6 +86,9 @@ public class PMController implements ControllerManager {
 
         @Meta.AD(deflt = "auctioneer1")
         String auctioneer_id();
+
+        @Meta.AD(deflt = "true")
+        boolean small_widget();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(PMController.class);
@@ -132,11 +137,12 @@ public class PMController implements ControllerManager {
 
         config = Configurable.createConfigurable(Config.class, properties);
         this.properties = properties;
+        this.properties.put(AgentConfiguration.AGENT_BID_LOG_LEVEL_PROPERTY, AgentConfiguration.FULL_LOGGING);
 
         concentratorConfiguration = new BaseConfiguration(properties);
         concentrator = createConcentrator(concentratorConfiguration);
         concentrator.bind(executorService);
-        concentrator.bind(timeService);
+        concentrator.bind(pmTimeService);
 
         if (config.broker_uri() == null || config.broker_uri().isEmpty()) {
             Dictionary<String, Object> concentratorProperties = new Hashtable<String, Object>();
@@ -147,8 +153,17 @@ public class PMController implements ControllerManager {
         }
 
         // Widget
-        widget = new PMWidgetImpl(this);
-        widgetRegistration = context.registerService(Widget.class, widget, null);
+        if (config.small_widget()) {
+            widget = new PMWidgetImpl(this);
+            widgetRegistration = context.registerService(Widget.class, widget, null);
+        } else {
+            widget = new PMFullWidget();
+            Dictionary<String, Object> p = new Hashtable<String, Object>();
+            p.put("widget.type", "full");
+            p.put("widget.name", "pmfullwidget");
+            widgetRegistration = context.registerService(Widget.class, widget, p);
+        }
+        concentrator.bind(widget);
 
     }
 
@@ -186,7 +201,8 @@ public class PMController implements ControllerManager {
         }
 
         concentrator.unbind(executorService);
-        concentrator.unbind(timeService);
+        concentrator.unbind(pmTimeService);
+        concentrator.unbind(widget);
         concentrator = null;
         widgetRegistration.unregister();
     }
@@ -199,11 +215,13 @@ public class PMController implements ControllerManager {
         this.executorService = executorService;
     }
 
-    private net.powermatcher.core.scheduler.service.TimeService timeService;
+    private TimeService fpaiTimeService;
+    private net.powermatcher.core.scheduler.service.TimeService pmTimeService;
 
     @Reference
     public void setTimeService(final TimeService timeService) {
-        this.timeService = new net.powermatcher.core.scheduler.service.TimeService() {
+        fpaiTimeService = timeService;
+        pmTimeService = new net.powermatcher.core.scheduler.service.TimeService() {
             @Override
             public int getRate() {
                 throw new UnsupportedOperationException();
@@ -245,7 +263,7 @@ public class PMController implements ControllerManager {
                                         agentProtocolAdapter,
                                         mqttv3Connection }) {
             a.bind(executorService);
-            a.bind(timeService);
+            a.bind(pmTimeService);
             a.bind();
         }
     }
@@ -256,7 +274,7 @@ public class PMController implements ControllerManager {
                                         agentProtocolAdapter,
                                         marketBasisAdapter }) {
             a.unbind();
-            a.unbind(timeService);
+            a.unbind(pmTimeService);
             a.unbind(executorService);
         }
     }
@@ -326,7 +344,8 @@ public class PMController implements ControllerManager {
 
             agent.setConfiguration(new PrefixedConfiguration(agentProperties, prefix));
             agent.bind(executorService);
-            agent.bind(timeService);
+            agent.bind(pmTimeService);
+            agent.setFpaiTimeService(fpaiTimeService);
             if (widget != null) {
                 agent.bind(widget);
             }
@@ -362,7 +381,7 @@ public class PMController implements ControllerManager {
 
             // unbind the executor service
             agent.unbind(executorService);
-            agent.unbind(timeService);
+            agent.unbind(pmTimeService);
 
             logger.info("{} unbound from Concentrator and ControllableResource", agent.getClass().getSimpleName());
         }

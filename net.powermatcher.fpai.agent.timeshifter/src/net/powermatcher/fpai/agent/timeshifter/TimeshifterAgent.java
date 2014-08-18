@@ -41,9 +41,6 @@ public class TimeshifterAgent extends FPAIAgent<TimeShifterControlSpace> impleme
 
     private static final double DEFAULT_EAGERNESS = 1.0 / 0.3;
 
-    /** Specifies whether the device is turned on or off; turned off = null. */
-    private Date deviceStartTime = null;
-
     /**
      * Specifies how eager an agent is to get started. A low value indicates that the agent is eager to get started, and
      * vice versa. An eagerness of 1 will result in a linearly decreasing price for which the resource will be turned
@@ -52,6 +49,7 @@ public class TimeshifterAgent extends FPAIAgent<TimeShifterControlSpace> impleme
     private double eagerness = DEFAULT_EAGERNESS;
 
     private TimeShifterControlSpace lastControlSpace;
+    private Allocation lastAllocation;
 
     public TimeshifterAgent() {
     }
@@ -65,61 +63,41 @@ public class TimeshifterAgent extends FPAIAgent<TimeShifterControlSpace> impleme
 
     @Override
     public Allocation createAllocation(BidInfo lastBid, PriceInfo price, TimeShifterControlSpace controlSpace) {
-        lastControlSpace = controlSpace;
-        // the device has already been started
-        if (deviceStartTime != null) {
-            return null;
-        }
-
-        // no flexibility conveyed, so don't start
-        if (controlSpace == null) {
-            return null;
-        }
-
         Date now = new Date(getTimeSource().currentTimeMillis());
 
-        // are we in a must run state?
-        if (now.after(controlSpace.getStartBefore()) || now.equals(controlSpace.getStartBefore())) {
-            return createStartAllocation(controlSpace, now);
+        // if the control space is updated consider the previous shiftable process preempted, start afresh
+        if (!controlSpace.equals(lastControlSpace)) {
+            lastAllocation = null;
+            lastControlSpace = controlSpace;
         }
 
-        // did we promise to turn on in our bid for the current price?
-        else if (lastBid.getDemand(price.getCurrentPrice()) != 0) {
-            return createStartAllocation(controlSpace, now);
+        // if the lastAllocation is finished (its end time is before now) consider the shiftable process finished
+        if ((lastAllocation != null && now.after(TimeUtil.add(lastAllocation.getStartTime(),
+                                                              lastAllocation.getEnergyProfile().getDuration())))) {
+            lastAllocation = null;
+        }
+        // if no allocation has been determined yet (the shiftable process hasn't been started)
+        // and the price given the last bid dictates that we should consume / supply
+        // create an allocation for the shiftable process starting now
+        else if (lastAllocation == null && lastBid.getDemand(price.getCurrentPrice()) != 0) {
+            lastAllocation = new Allocation(controlSpace, now, controlSpace.getEnergyProfile());
         }
 
-        return null;
-    }
+        // TODO in this implementation, on every invocation of createAllocation, the current allocation (if any) is
+        // returned. A possibly cleaner solution is to only return the allocation when it is created. However, it must
+        // be considered that a ControllableResource didn't receive the allocation (there is no ACK on this level). From
+        // that perspective emiting the current allocation *is* desirable.
 
-    private Allocation createStartAllocation(TimeShifterControlSpace controlSpace, Date now) {
-        deviceStartTime = now;
-        return new Allocation(controlSpace, deviceStartTime, controlSpace.getEnergyProfile());
-    }
-
-    /**
-     * Publish regularly a new bid when the device is started, even if there was no new ControlSpace. The EnergyProfile
-     * used to create a must-run bid can change over time.
-     * 
-     * Overrides the run in FPAIAgent
-     */
-    @Override
-    public void run() {
-        super.run();
-        if (deviceStartTime != null) {
-            publishBidUpdate(createBid(lastControlSpace, getCurrentMarketBasis()));
-        }
+        return lastAllocation;
     }
 
     @Override
     public BidInfo createBid(TimeShifterControlSpace controlSpace, MarketBasis marketBasis) {
-        // there is no flexibility
-        if (controlSpace == null) {
-            deviceStartTime = null;
-            return new BidInfo(marketBasis, new PricePoint(0, 0));
-        }
+        assert controlSpace != null;
+        assert marketBasis != null;
 
         // the device hasn't started yet
-        else if (deviceStartTime == null) {
+        if (lastAllocation == null) {
             Date now = new Date(getTimeSource().currentTimeMillis());
 
             // we're (still) at the very start or before of the flexibility, so we're still in a must-off situation
@@ -140,11 +118,14 @@ public class TimeshifterAgent extends FPAIAgent<TimeShifterControlSpace> impleme
 
         // The time-shifter is turned on, send must-run bid with current demand
         else {
-            return new BidInfo(marketBasis, new PricePoint(0, getCurrentDemand(controlSpace).doubleValue(WATT)));
+            return new BidInfo(marketBasis, new PricePoint(0, getCurrentDemand().doubleValue(WATT)));
         }
     }
 
     private BidInfo calculateFlexibleBid(TimeShifterControlSpace controlSpace, MarketBasis marketBasis) {
+        assert controlSpace != null;
+        assert marketBasis != null;
+
         // determine how far time has progressed in comparison to the start window (start after until start before)
         long startAfter = controlSpace.getStartAfter().getTime();
         long startBefore = controlSpace.getStartBefore().getTime();
@@ -178,14 +159,26 @@ public class TimeshifterAgent extends FPAIAgent<TimeShifterControlSpace> impleme
     }
 
     private Measurable<Power> getInitialDemand(TimeShifterControlSpace controlSpace) {
+        assert controlSpace != null;
+        assert !controlSpace.getEnergyProfile().isEmpty();
+
         Element initialElement = controlSpace.getEnergyProfile().get(0);
-        return initialElement.getAveragePower();
+        Measurable<Power> initialDemand = initialElement.getAveragePower();
+        assert initialDemand.doubleValue(WATT) != 0;
+        return initialDemand;
     }
 
-    private Measurable<Power> getCurrentDemand(TimeShifterControlSpace controlSpace) {
-        Measurable<Duration> offset = TimeUtil.difference(deviceStartTime,
-                                                          new Date(getTimeSource().currentTimeMillis()));
-        Element value = controlSpace.getEnergyProfile().getElementForOffset(offset);
+    private Measurable<Power> getCurrentDemand() {
+        Allocation allocation = lastAllocation;
+
+        if (allocation == null) {
+            return Measure.valueOf(0, WATT);
+        }
+
+        Date now = new Date(getTimeSource().currentTimeMillis());
+        Date start = allocation.getStartTime();
+        Measurable<Duration> offset = TimeUtil.difference(start, now);
+        Element value = allocation.getEnergyProfile().getElementForOffset(offset);
 
         if (value == null) {
             return Measure.valueOf(0, WATT);

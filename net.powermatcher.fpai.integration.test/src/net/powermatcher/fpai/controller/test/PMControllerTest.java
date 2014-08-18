@@ -48,6 +48,7 @@ import org.flexiblepower.time.TimeUtil;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class PMControllerTest extends TestCase {
     private static final int WAIT_TIME = -2000;
 
@@ -56,7 +57,7 @@ public class PMControllerTest extends TestCase {
 
     public PMControllerTest() {
         configuration = new HashMap<String, Object>();
-        configuration.put("applianceIds", "test");
+        configuration.put("resourceIds", "test");
         configuration.put("cluster.id", "ExampleCluster");
         configuration.put("location.id", "ExampleLocation");
         configuration.put("messaging.protocol", "INTERNAL_v1");
@@ -70,6 +71,7 @@ public class PMControllerTest extends TestCase {
         configuration.put("market.maximum.price", "0.99");
         configuration.put("market.price.steps", "100");
         configuration.put("market.significance", "2");
+        configuration.put("small.widget", "true");
     }
 
     private String concentratorId;

@@ -52,6 +52,9 @@ public class AuctioneerManager {
         @AD(deflt = "100")
         double maximum_price();
 
+        @AD(deflt = "1000")
+        int price_steps();
+
         @AD(deflt = "FULL_LOGGING")
         String matcher_price_log_level();
 
@@ -123,7 +126,7 @@ public class AuctioneerManager {
 
     private boolean match(Map<String, Object> properties) {
         return properties.containsKey(AGENT_FILTER_KEY) && properties.get(AGENT_FILTER_KEY)
-                                                                     .equals(config.auctioneer_id());
+                .equals(config.auctioneer_id());
     }
 
     private ScheduledExecutorService executorService;
