@@ -6,3 +6,4 @@ cnf/release
 bin
 generated
 bin_test/
+RemoteSystemsTempFiles
