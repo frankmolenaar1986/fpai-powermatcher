@@ -5,6 +5,6 @@ Bundle-Version: 1.0.1
 	net.powermatcher.core.agent;version=latest,\
 	net.powermatcher.core.configurable;version=latest,\
 	net.powermatcher.core.scheduler.service;version=latest,\
-	biz.aQute.bnd.annotation;version='[1.50.0,2)',\
+	biz.aQute.bnd.annotation;version='[1.50.0,3)',\
 	flexiblepower.api.ext
 Export-Package: net.powermatcher.fpai.agent
