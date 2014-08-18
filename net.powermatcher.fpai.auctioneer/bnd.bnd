@@ -1,0 +1,17 @@
+Bundle-Version: 1.0.0
+-buildpath: flexiblepower.api;version=latest,\
+	flexiblepower.api.ext;version=latest,\
+	net.powermatcher.core.adapter;version=latest,\
+	net.powermatcher.core.adapter.service;version=latest,\
+	net.powermatcher.core.agent;version=latest,\
+	net.powermatcher.core.agent.auctioneer;version=latest,\
+	net.powermatcher.core.configurable;version=latest,\
+	net.powermatcher.core.scheduler.service;version=latest,\
+	biz.aQute.bnd.annotation;version='[1.50.0,2)',\
+	slf4j.api,\
+	osgi.core,\
+	net.powermatcher.core.agent.marketbasis.adapter
+	
+-sign: fps
+Service-Component: *
+Private-Package: net.powermatcher.fpai.auctioneer
