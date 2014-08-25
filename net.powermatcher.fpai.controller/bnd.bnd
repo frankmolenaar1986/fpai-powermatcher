@@ -1,5 +1,6 @@
 Bundle-Version: 1.0.1
--buildpath: biz.aQute.bnd.annotation;version=latest,\
+-buildpath:  \
+	biz.aQute.bnd.annotation;version=latest,\
 	osgi.cmpn,\
 	osgi.core,\
 	slf4j.api,\
@@ -14,20 +15,20 @@ Bundle-Version: 1.0.1
 	net.powermatcher.core.scheduler.service;version=latest,\
 	net.powermatcher.core.messaging.framework;version=latest,\
 	net.powermatcher.core.messaging.protocol.adapter;version=latest,\
-	net.powermatcher.fpai.agent;version=latest,\
-	net.powermatcher.fpai.agent.buffer;version=latest,\
-	net.powermatcher.fpai.agent.storage;version=latest,\
-	net.powermatcher.fpai.agent.timeshifter;version=latest,\
-	net.powermatcher.fpai.agent.uncontrolled;version=latest,\
-	net.powermatcher.core.messaging.mqttv3
+	net.powermatcher.core.messaging.mqttv3,\
+	flexiblepower.api.efi
 Include-Resource: res
 
 Service-Component: net.powermatcher.fpai.controller.*
 
-Export-Package: net.powermatcher.fpai.controller,\
-	net.powermatcher.fpai.fullwidget
+Export-Package:  \
+	net.powermatcher.fpai.controller,\
+	net.powermatcher.fpai.fullwidget,\
+	net.powermatcher.fpai.util
 Import-Package: aQute.bnd.annotation.metatype;resolution:=optional,\
 	*
 
 -sign: fps
 
+Private-Package:  \
+	net.powermatcher.fpai.agents

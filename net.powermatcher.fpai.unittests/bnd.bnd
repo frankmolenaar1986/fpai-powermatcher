@@ -2,7 +2,8 @@ Bundle-Version: 1.0.0
 
 Test-Cases: ${classes;CONCRETE;EXTENDS;junit.framework.TestCase}
 
--buildpath: biz.aQute.bnd.annotation;version=latest,\
+-buildpath:  \
+	biz.aQute.bnd.annotation;version=latest,\
 	osgi.cmpn,\
 	osgi.core,\
 	slf4j.api,\
@@ -21,11 +22,6 @@ Test-Cases: ${classes;CONCRETE;EXTENDS;junit.framework.TestCase}
 	net.powermatcher.core.messaging.framework;version=latest,\
 	net.powermatcher.core.messaging.mqttv3;version=latest,\
 	net.powermatcher.core.messaging.protocol.adapter;version=latest,\
-	net.powermatcher.fpai.agent;version=latest,\
-	net.powermatcher.fpai.agent.buffer;version=latest,\
-	net.powermatcher.fpai.agent.storage;version=latest,\
-	net.powermatcher.fpai.agent.timeshifter;version=latest,\
-	net.powermatcher.fpai.agent.uncontrolled;version=latest,\
 	net.powermatcher.fpai.controller;version=latest,\
 	org.eclipse.paho.client.mqttv3
 Include-Resource: res

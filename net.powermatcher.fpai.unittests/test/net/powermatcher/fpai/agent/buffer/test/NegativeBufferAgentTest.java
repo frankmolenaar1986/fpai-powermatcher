@@ -1,203 +1,179 @@
 package net.powermatcher.fpai.agent.buffer.test;
 
-import java.util.Date;
-import java.util.Properties;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-
-import javax.measure.Measure;
-import javax.measure.unit.NonSI;
-import javax.measure.unit.SI;
-
 import junit.framework.TestCase;
-import net.powermatcher.core.agent.framework.config.AgentConfiguration;
-import net.powermatcher.core.agent.framework.data.BidInfo;
-import net.powermatcher.core.agent.framework.data.MarketBasis;
-import net.powermatcher.core.agent.framework.data.PriceInfo;
-import net.powermatcher.core.configurable.PrefixedConfiguration;
-import net.powermatcher.fpai.agent.buffer.BufferAgent;
-import net.powermatcher.fpai.test.AllocationAnalyzer;
-import net.powermatcher.fpai.test.BidAnalyzer;
-import net.powermatcher.fpai.test.MockMatcherService;
-import net.powermatcher.fpai.test.MockResourceManager;
-import net.powermatcher.fpai.test.MockTimeService;
-
-import org.flexiblepower.rai.Allocation;
-import org.flexiblepower.rai.BufferControlSpace;
-import org.flexiblepower.time.TimeUtil;
 
 public class NegativeBufferAgentTest extends TestCase {
 
-    private static final String RESOURCE_ID = "resource-id";
-    private static final String CFG_PREFIX = "agent.agent1";
-    private static final double MINIMUM_PRICE = 0;
-    private static final double MAXIMUM_PRICE = 100;
-    private static final MarketBasis MARKET_BASIS = new MarketBasis("Electricity",
-                                                                    "EUR",
-                                                                    100,
-                                                                    MINIMUM_PRICE,
-                                                                    MAXIMUM_PRICE,
-                                                                    1,
-                                                                    0);
-    private BufferAgent agent;
-    private ScheduledExecutorService executor;
-    private MockTimeService timeService;
-    private MockResourceManager<BufferControlSpace> resourceManager;
-    private MockMatcherService parent;
-
-    @Override
-    public void setUp() {
-        Properties cfg = new Properties();
-        cfg.put(CFG_PREFIX + ".id", "agent1");
-        cfg.put(CFG_PREFIX + ".matcher.id", "concentrator1");
-        cfg.put(CFG_PREFIX + ".agent.bid.log.level", AgentConfiguration.FULL_LOGGING);
-        cfg.put(CFG_PREFIX + ".agent.price.log.level", AgentConfiguration.FULL_LOGGING);
-        cfg.put(CFG_PREFIX + ".allocation.update.threshold", 0d);
-
-        agent = new BufferAgent(new PrefixedConfiguration(cfg, CFG_PREFIX));
-        agent.updateMarketBasis(MARKET_BASIS);
-
-        executor = Executors.newScheduledThreadPool(2);
-        agent.bind(executor);
-
-        timeService = new MockTimeService();
-        agent.setFpaiTimeService(timeService);
-        agent.bind(timeService);
-
-        resourceManager = MockResourceManager.create(RESOURCE_ID, BufferControlSpace.class);
-        agent.bind(resourceManager);
-
-        parent = new MockMatcherService();
-        agent.bind(parent);
-
-        timeService.setAbsoluteTime(System.currentTimeMillis());
-    }
-
-    @Override
-    public void tearDown() throws InterruptedException {
-        agent.unbind(executor);
-        agent.unbind(timeService);
-        agent.unbind(parent);
-
-        executor.shutdown();
-        executor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS);
-    }
-
-    /**
-     * Test if the agent respects the MinOn property
-     */
-    public void testMinOn() {
-        // init
-        timeService.stepInTime(60000);
-        NegativeBufferControlSpaceBuilder b = new NegativeBufferControlSpaceBuilder();
-        b.stateOfCharge(0.0f).minOnPeriod(Measure.valueOf(1, NonSI.MINUTE));
-        b.validFrom(timeService.getDate()).validThru(new Date(timeService.currentTimeMillis() + 10000));
-
-        // Make the agent turn on
-        resourceManager.updateControlSpace(b.build(RESOURCE_ID));
-        agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE)); // Triggers allocation
-        Allocation allocation = resourceManager.getLastAllocation(1000);
-        AllocationAnalyzer.assertRunningAllocation(allocation, timeService);
-
-        // Now we let it run for two minutes. The SOC = 1, the minOnPeriod one minute, so the agent must tell the device
-        // to shut down after one minute.
-        for (int seconds = 0; seconds < 120; seconds++) {
-            timeService.stepInTime(1000);
-            b.validFrom(timeService.getDate()).validThru(new Date(timeService.currentTimeMillis() + 10000));
-
-            // Check bid
-            b.stateOfCharge(1);
-            resourceManager.updateControlSpace(b.build(RESOURCE_ID)); // Triggers bid
-
-            // Check allocation
-            agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MAXIMUM_PRICE)); // Triggers allocation
-            allocation = resourceManager.getLastAllocation(1000);
-            BidInfo lastBid = parent.getLastBid(agent.getId(), 1000);
-            System.out.println(lastBid);
-            System.out.println(allocation.getEnergyProfile().get(0).getAveragePower());
-            System.out.println("Second " + seconds);
-            if (seconds < 60) {
-                // Must run situation
-                AllocationAnalyzer.assertRunningAllocation(allocation, timeService);
-                BidAnalyzer.assertDemandAtMost(lastBid, Measure.valueOf(1000, SI.WATT));
-            } else {
-                // MinTurnOn period is over, should turn off now
-                AllocationAnalyzer.assertNotRunningAllocation(allocation, timeService);
-                BidAnalyzer.assertFlatBidWithValue(lastBid, Measure.valueOf(0, SI.WATT));
-            }
-        }
-    }
-
-    /**
-     * Test if the agent respects the MinOn property
-     */
-    public void testMinOff() {
-        // make device turn on, make sure minturnon and minturnoff periods are over
-        timeService.stepInTime(Measure.valueOf(1, NonSI.DAY));
-
-        BufferControlSpaceBuilder b = new BufferControlSpaceBuilder();
-
-        // update the control space triggering the agent send a bid
-        resourceManager.updateControlSpace(b.validFrom(timeService.getDate())
-                                            .validThru(TimeUtil.add(timeService.getDate(),
-                                                                    Measure.valueOf(10, SI.SECOND)))
-                                            .minOffPeriod(Measure.valueOf(1, NonSI.MINUTE))
-                                            .stateOfCharge(0.5f)
-                                            .build(RESOURCE_ID));
-        // set the price to the minimum, so the agent would want the buffer to charge
-        agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE));
-        // assert that the last allocation reflects the charge target
-        AllocationAnalyzer.assertRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
-
-        // advance time at the end of the minimum off period
-        timeService.stepInTime(Measure.valueOf(1, NonSI.MINUTE));
-
-        // update the control space triggering the agent send a bid
-        resourceManager.updateControlSpace(b.validFrom(timeService.getDate())
-                                            .validThru(TimeUtil.add(timeService.getDate(),
-                                                                    Measure.valueOf(10, SI.SECOND)))
-                                            .stateOfCharge(0.51f)
-                                            .build(RESOURCE_ID));
-        // set the price to the minimum, so the agent would want the buffer to charge
-        agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE));
-        // assert that the last allocation reflects the charge target
-        AllocationAnalyzer.assertRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
-
-        // advance time over the end of the minimum off period
-        timeService.stepInTime(Measure.valueOf(1, SI.SECOND));
-
-        // update the control space triggering the agent send a bid
-        resourceManager.updateControlSpace(b.build(RESOURCE_ID));
-        // set the price to the minimum, so the agent would not want the buffer to charge
-        agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MAXIMUM_PRICE));
-        AllocationAnalyzer.assertNotRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
-
-        // Now we let it run for two minutes. The SOC = 0.5, the minOffPeriod one minute, so the agent must tell the
-        // device to start running again after one minute.
-        for (int seconds = 1; seconds < 120; seconds++) {
-            timeService.stepInTime(Measure.valueOf(1, SI.SECOND));
-            // Check bid
-            resourceManager.updateControlSpace(b.stateOfCharge(0)
-                                                .validFrom(timeService.getDate())
-                                                .validThru(TimeUtil.add(timeService.getDate(),
-                                                                        Measure.valueOf(10, SI.SECOND)))
-                                                .build(RESOURCE_ID)); // Triggers bid
-
-            // Trigger allocation
-            agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE));
-
-            // Check allocation
-            if (seconds <= 60) {
-                // In minturnoff period
-                AllocationAnalyzer.assertNotRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
-                BidAnalyzer.assertFlatBidWithValue(parent.getLastBid(agent.getId(), 1000), Measure.valueOf(0, SI.WATT));
-            } else {
-                // minturnoff period over, should start buffering
-                AllocationAnalyzer.assertRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
-                BidAnalyzer.assertDemandBid(parent.getLastBid(agent.getId(), 1000));
-            }
-        }
-    }
+    // private static final String RESOURCE_ID = "resource-id";
+    // private static final String CFG_PREFIX = "agent.agent1";
+    // private static final double MINIMUM_PRICE = 0;
+    // private static final double MAXIMUM_PRICE = 100;
+    // private static final MarketBasis MARKET_BASIS = new MarketBasis("Electricity",
+    // "EUR",
+    // 100,
+    // MINIMUM_PRICE,
+    // MAXIMUM_PRICE,
+    // 1,
+    // 0);
+    // private BufferAgent agent;
+    // private ScheduledExecutorService executor;
+    // private MockTimeService timeService;
+    // private MockResourceManager<BufferControlSpace> resourceManager;
+    // private MockMatcherService parent;
+    //
+    // @Override
+    // public void setUp() {
+    // Properties cfg = new Properties();
+    // cfg.put(CFG_PREFIX + ".id", "agent1");
+    // cfg.put(CFG_PREFIX + ".matcher.id", "concentrator1");
+    // cfg.put(CFG_PREFIX + ".agent.bid.log.level", AgentConfiguration.FULL_LOGGING);
+    // cfg.put(CFG_PREFIX + ".agent.price.log.level", AgentConfiguration.FULL_LOGGING);
+    // cfg.put(CFG_PREFIX + ".allocation.update.threshold", 0d);
+    //
+    // agent = new BufferAgent(new PrefixedConfiguration(cfg, CFG_PREFIX));
+    // agent.updateMarketBasis(MARKET_BASIS);
+    //
+    // executor = Executors.newScheduledThreadPool(2);
+    // agent.bind(executor);
+    //
+    // timeService = new MockTimeService();
+    // agent.setFpaiTimeService(timeService);
+    // agent.bind(timeService);
+    //
+    // resourceManager = MockResourceManager.create(RESOURCE_ID, BufferControlSpace.class);
+    // agent.bind(resourceManager);
+    //
+    // parent = new MockMatcherService();
+    // agent.bind(parent);
+    //
+    // timeService.setAbsoluteTime(System.currentTimeMillis());
+    // }
+    //
+    // @Override
+    // public void tearDown() throws InterruptedException {
+    // agent.unbind(executor);
+    // agent.unbind(timeService);
+    // agent.unbind(parent);
+    //
+    // executor.shutdown();
+    // executor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS);
+    // }
+    //
+    // /**
+    // * Test if the agent respects the MinOn property
+    // */
+    // public void testMinOn() {
+    // // init
+    // timeService.stepInTime(60000);
+    // NegativeBufferControlSpaceBuilder b = new NegativeBufferControlSpaceBuilder();
+    // b.stateOfCharge(0.0f).minOnPeriod(Measure.valueOf(1, NonSI.MINUTE));
+    // b.validFrom(timeService.getDate()).validThru(new Date(timeService.currentTimeMillis() + 10000));
+    //
+    // // Make the agent turn on
+    // resourceManager.updateControlSpace(b.build(RESOURCE_ID));
+    // agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE)); // Triggers allocation
+    // Allocation allocation = resourceManager.getLastAllocation(1000);
+    // AllocationAnalyzer.assertRunningAllocation(allocation, timeService);
+    //
+    // // Now we let it run for two minutes. The SOC = 1, the minOnPeriod one minute, so the agent must tell the device
+    // // to shut down after one minute.
+    // for (int seconds = 0; seconds < 120; seconds++) {
+    // timeService.stepInTime(1000);
+    // b.validFrom(timeService.getDate()).validThru(new Date(timeService.currentTimeMillis() + 10000));
+    //
+    // // Check bid
+    // b.stateOfCharge(1);
+    // resourceManager.updateControlSpace(b.build(RESOURCE_ID)); // Triggers bid
+    //
+    // // Check allocation
+    // agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MAXIMUM_PRICE)); // Triggers allocation
+    // allocation = resourceManager.getLastAllocation(1000);
+    // BidInfo lastBid = parent.getLastBid(agent.getId(), 1000);
+    // System.out.println(lastBid);
+    // System.out.println(allocation.getEnergyProfile().get(0).getAveragePower());
+    // System.out.println("Second " + seconds);
+    // if (seconds < 60) {
+    // // Must run situation
+    // AllocationAnalyzer.assertRunningAllocation(allocation, timeService);
+    // BidAnalyzer.assertDemandAtMost(lastBid, Measure.valueOf(1000, SI.WATT));
+    // } else {
+    // // MinTurnOn period is over, should turn off now
+    // AllocationAnalyzer.assertNotRunningAllocation(allocation, timeService);
+    // BidAnalyzer.assertFlatBidWithValue(lastBid, Measure.valueOf(0, SI.WATT));
+    // }
+    // }
+    // }
+    //
+    // /**
+    // * Test if the agent respects the MinOn property
+    // */
+    // public void testMinOff() {
+    // // make device turn on, make sure minturnon and minturnoff periods are over
+    // timeService.stepInTime(Measure.valueOf(1, NonSI.DAY));
+    //
+    // BufferControlSpaceBuilder b = new BufferControlSpaceBuilder();
+    //
+    // // update the control space triggering the agent send a bid
+    // resourceManager.updateControlSpace(b.validFrom(timeService.getDate())
+    // .validThru(TimeUtil.add(timeService.getDate(),
+    // Measure.valueOf(10, SI.SECOND)))
+    // .minOffPeriod(Measure.valueOf(1, NonSI.MINUTE))
+    // .stateOfCharge(0.5f)
+    // .build(RESOURCE_ID));
+    // // set the price to the minimum, so the agent would want the buffer to charge
+    // agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE));
+    // // assert that the last allocation reflects the charge target
+    // AllocationAnalyzer.assertRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
+    //
+    // // advance time at the end of the minimum off period
+    // timeService.stepInTime(Measure.valueOf(1, NonSI.MINUTE));
+    //
+    // // update the control space triggering the agent send a bid
+    // resourceManager.updateControlSpace(b.validFrom(timeService.getDate())
+    // .validThru(TimeUtil.add(timeService.getDate(),
+    // Measure.valueOf(10, SI.SECOND)))
+    // .stateOfCharge(0.51f)
+    // .build(RESOURCE_ID));
+    // // set the price to the minimum, so the agent would want the buffer to charge
+    // agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE));
+    // // assert that the last allocation reflects the charge target
+    // AllocationAnalyzer.assertRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
+    //
+    // // advance time over the end of the minimum off period
+    // timeService.stepInTime(Measure.valueOf(1, SI.SECOND));
+    //
+    // // update the control space triggering the agent send a bid
+    // resourceManager.updateControlSpace(b.build(RESOURCE_ID));
+    // // set the price to the minimum, so the agent would not want the buffer to charge
+    // agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MAXIMUM_PRICE));
+    // AllocationAnalyzer.assertNotRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
+    //
+    // // Now we let it run for two minutes. The SOC = 0.5, the minOffPeriod one minute, so the agent must tell the
+    // // device to start running again after one minute.
+    // for (int seconds = 1; seconds < 120; seconds++) {
+    // timeService.stepInTime(Measure.valueOf(1, SI.SECOND));
+    // // Check bid
+    // resourceManager.updateControlSpace(b.stateOfCharge(0)
+    // .validFrom(timeService.getDate())
+    // .validThru(TimeUtil.add(timeService.getDate(),
+    // Measure.valueOf(10, SI.SECOND)))
+    // .build(RESOURCE_ID)); // Triggers bid
+    //
+    // // Trigger allocation
+    // agent.updatePriceInfo(new PriceInfo(MARKET_BASIS, MINIMUM_PRICE));
+    //
+    // // Check allocation
+    // if (seconds <= 60) {
+    // // In minturnoff period
+    // AllocationAnalyzer.assertNotRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
+    // BidAnalyzer.assertFlatBidWithValue(parent.getLastBid(agent.getId(), 1000), Measure.valueOf(0, SI.WATT));
+    // } else {
+    // // minturnoff period over, should start buffering
+    // AllocationAnalyzer.assertRunningAllocation(resourceManager.getLastAllocation(1000), timeService);
+    // BidAnalyzer.assertDemandBid(parent.getLastBid(agent.getId(), 1000));
+    // }
+    // }
+    // }
 
     // /**
     // * Test if the agent prevents over charging with respect to the minimum on period

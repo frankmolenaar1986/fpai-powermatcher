@@ -12,13 +12,13 @@ import net.powermatcher.core.agent.framework.log.BidLogInfo;
 import net.powermatcher.core.agent.framework.log.PriceLogInfo;
 
 public class PMWidgetImpl implements PMWidget {
-    private final PMController controller;
+    private final PowerMatcherController controller;
 
     private final Map<String, BidLogInfo> latestBids;
     private volatile PriceLogInfo latestPrice;
 
-    public PMWidgetImpl(PMController controller) {
-        this.controller = controller;
+    public PMWidgetImpl(PowerMatcherController powerMatcherController) {
+        controller = powerMatcherController;
         latestBids = new ConcurrentHashMap<String, BidLogInfo>();
         latestPrice = null;
     }
