@@ -12,7 +12,6 @@ import org.flexiblepower.efi.uncontrolled.UncontrolledForecast;
 import org.flexiblepower.efi.uncontrolled.UncontrolledMeasurement;
 import org.flexiblepower.efi.uncontrolled.UncontrolledRegistration;
 import org.flexiblepower.messaging.Connection;
-import org.flexiblepower.rai.comm.Allocation;
 import org.flexiblepower.rai.comm.AllocationStatusUpdate;
 import org.flexiblepower.rai.comm.ControlSpaceRegistration;
 import org.flexiblepower.rai.comm.ControlSpaceUpdate;
@@ -40,6 +39,7 @@ public class UncontrolledAgent extends FpaiAgent {
                 registration = (UncontrolledRegistration) message;
                 if (!registration.supportsCommodity(Commodity.ELECTRICITY)) {
                     log.error("PowerMatcher cannot support appliances which do not support electricity");
+                    disconnected();
                 }
             } else {
                 log.error("Received multiple ControlSpaceRegistrations, ignoring...");
@@ -81,8 +81,7 @@ public class UncontrolledAgent extends FpaiAgent {
     }
 
     @Override
-    protected Allocation constructAllocation() {
+    protected void priceUpdated() {
         // This agent doesn't support curtailment
-        return null;
     }
 }

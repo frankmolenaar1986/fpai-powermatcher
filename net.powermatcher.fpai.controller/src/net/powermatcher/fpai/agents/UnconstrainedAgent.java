@@ -5,7 +5,6 @@ import net.powermatcher.core.configurable.service.ConfigurationService;
 import net.powermatcher.fpai.controller.PowerMatcherController;
 
 import org.flexiblepower.messaging.Connection;
-import org.flexiblepower.rai.comm.Allocation;
 import org.flexiblepower.rai.comm.AllocationStatusUpdate;
 import org.flexiblepower.rai.comm.ControlSpaceRegistration;
 import org.flexiblepower.rai.comm.ControlSpaceUpdate;
@@ -43,9 +42,8 @@ public class UnconstrainedAgent extends FpaiAgent {
     }
 
     @Override
-    protected Allocation constructAllocation() {
+    protected void priceUpdated() {
         // TODO Auto-generated method stub
-        return null;
     }
 
 }

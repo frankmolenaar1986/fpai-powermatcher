@@ -58,7 +58,7 @@ public abstract class FpaiAgent extends Agent implements MessageHandler {
      */
     protected abstract BidInfo constructBid();
 
-    protected abstract Allocation constructAllocation();
+    protected abstract void priceUpdated();
 
     @Override
     public void disconnected() {
@@ -84,10 +84,7 @@ public abstract class FpaiAgent extends Agent implements MessageHandler {
     @Override
     public void updatePriceInfo(PriceInfo newPriceInfo) {
         super.updatePriceInfo(newPriceInfo);
-        Allocation allocation = constructAllocation();
-        if (allocation != null) {
-            sendAllocation(allocation);
-        }
+        priceUpdated();
     }
 
 }
