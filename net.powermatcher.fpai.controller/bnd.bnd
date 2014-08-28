@@ -21,14 +21,14 @@ Include-Resource: res
 
 Service-Component: net.powermatcher.fpai.controller.*
 
-Export-Package:  \
-	net.powermatcher.fpai.controller,\
-	net.powermatcher.fpai.fullwidget,\
-	net.powermatcher.fpai.util
+
 Import-Package: aQute.bnd.annotation.metatype;resolution:=optional,\
 	*
 
 -sign: fps
 
 Private-Package:  \
-	net.powermatcher.fpai.agents
+	net.powermatcher.fpai.agents,\
+	net.powermatcher.fpai.controller,\
+	net.powermatcher.fpai.fullwidget,\
+	net.powermatcher.fpai.util

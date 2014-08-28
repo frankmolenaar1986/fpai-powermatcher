@@ -177,7 +177,7 @@ public class TimeshifterAgent extends FpaiAgent {
             return new BidInfo(marketBasis, new PricePoint(0, 0));
         } else {
             // Program currently running
-            Measurable<Power> demand = concatenatedCommodityForecast.getExpectedAverageAtOffset(offset);
+            Measurable<Power> demand = concatenatedCommodityForecast.getValueAtOffset(offset);
             return new BidInfo(marketBasis, new PricePoint(0, demand.doubleValue(SI.WATT)));
         }
     }
@@ -187,8 +187,7 @@ public class TimeshifterAgent extends FpaiAgent {
                                     .get(0)
                                     .getCommodityProfiles()
                                     .get(Commodity.ELECTRICITY)
-                                    .get(0)
-                                    .getExpectedAverage();
+                                    .getValueAtOffset(Measure.<Duration> zero());
     }
 
     @Override
