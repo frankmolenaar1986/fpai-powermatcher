@@ -33,6 +33,7 @@ import net.powermatcher.fpai.util.PMTimeServiceWrapper;
 
 import org.flexiblepower.efi.EfiControllerManager;
 import org.flexiblepower.messaging.Connection;
+import org.flexiblepower.messaging.Endpoint;
 import org.flexiblepower.messaging.MessageHandler;
 import org.flexiblepower.time.TimeService;
 import org.flexiblepower.ui.Widget;
@@ -46,7 +47,7 @@ import aQute.bnd.annotation.component.Reference;
 import aQute.bnd.annotation.metatype.Configurable;
 import aQute.bnd.annotation.metatype.Meta;
 
-@Component(immediate = true, designateFactory = Config.class, provide = {})
+@Component(immediate = true, designateFactory = Config.class, provide = { Endpoint.class })
 public class PowerMatcherController implements EfiControllerManager {
 
     public static interface Config {
