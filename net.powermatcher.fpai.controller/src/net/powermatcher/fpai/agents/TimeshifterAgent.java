@@ -187,7 +187,7 @@ public class TimeshifterAgent extends FpaiAgent {
                                     .get(0)
                                     .getCommodityProfiles()
                                     .get(Commodity.ELECTRICITY)
-                                    .getValueAtOffset(Measure.<Duration> zero());
+                                    .getValueAtOffset(Measure.zero(SI.SECOND));
     }
 
     @Override

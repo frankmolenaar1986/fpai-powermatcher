@@ -210,7 +210,7 @@ public class PowerMatcherController implements EfiControllerManager {
 
         Map<String, Object> agentProperties = new HashMap<String, Object>(properties);
         String prefix = "agent" + ConfigurationService.SEPARATOR + ++agentId;
-        agentProperties.put(prefix + ".id", agentId);
+        agentProperties.put(prefix + ".id", String.valueOf(agentId));
         agentProperties.put(prefix + ".matcher.id", concentrator.getId());
         agentProperties.put(prefix + ".agent.bid.log.level", "FULL_LOGGING");
         agentProperties.put(prefix + ".agent.price.log.level", "FULL_LOGGING");
