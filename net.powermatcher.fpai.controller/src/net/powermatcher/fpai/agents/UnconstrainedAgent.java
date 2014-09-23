@@ -5,9 +5,9 @@ import net.powermatcher.core.configurable.service.ConfigurationService;
 import net.powermatcher.fpai.controller.PowerMatcherController;
 
 import org.flexiblepower.messaging.Connection;
-import org.flexiblepower.rai.comm.AllocationStatusUpdate;
-import org.flexiblepower.rai.comm.ControlSpaceRegistration;
-import org.flexiblepower.rai.comm.ControlSpaceUpdate;
+import org.flexiblepower.rai.AllocationStatusUpdate;
+import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceUpdate;
 
 public class UnconstrainedAgent extends FpaiAgent {
 

@@ -7,7 +7,6 @@ import java.util.List;
 import javax.measure.Measurable;
 import javax.measure.Measure;
 import javax.measure.quantity.Duration;
-import javax.measure.quantity.Energy;
 import javax.measure.quantity.Power;
 import javax.measure.unit.SI;
 
@@ -18,15 +17,18 @@ import net.powermatcher.core.configurable.service.ConfigurationService;
 import net.powermatcher.fpai.controller.PowerMatcherController;
 
 import org.flexiblepower.efi.timeshifter.SequentialProfile;
+import org.flexiblepower.efi.timeshifter.SequentialProfileAllocation;
 import org.flexiblepower.efi.timeshifter.TimeShifterAllocation;
 import org.flexiblepower.efi.timeshifter.TimeShifterRegistration;
 import org.flexiblepower.efi.timeshifter.TimeShifterUpdate;
 import org.flexiblepower.messaging.Connection;
-import org.flexiblepower.rai.comm.AllocationStatusUpdate;
-import org.flexiblepower.rai.comm.ControlSpaceRegistration;
-import org.flexiblepower.rai.comm.ControlSpaceUpdate;
+import org.flexiblepower.rai.AllocationStatusUpdate;
+import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceUpdate;
 import org.flexiblepower.rai.values.Commodity;
 import org.flexiblepower.rai.values.CommodityForecast;
+import org.flexiblepower.rai.values.CommodityUncertainMeasurables;
+import org.flexiblepower.rai.values.Profile.Element;
 import org.flexiblepower.time.TimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +42,7 @@ public class TimeshifterAgent extends FpaiAgent {
 
     /** Last received {@link TimeShifterUpdate}. Null means no flexibility, must not run bid. */
     private TimeShifterUpdate lastTimeshifterUpdate = null;
-    private CommodityForecast<Energy, Power> concatenatedCommodityForecast;
+    private CommodityForecast concatenatedCommodityForecast;
 
     /** Time when the machine started. Null means it's not runnig. */
     private Date profileStartTime = null;
@@ -69,19 +71,17 @@ public class TimeshifterAgent extends FpaiAgent {
 
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     protected void handleControlSpaceUpdate(ControlSpaceUpdate message) {
         if (message instanceof TimeShifterUpdate) {
             lastTimeshifterUpdate = (TimeShifterUpdate) message;
             List<SequentialProfile> timeShifterProfiles = lastTimeshifterUpdate.getTimeShifterProfiles();
-            CommodityForecast<Energy, Power> concatenatedCommodityForecast = timeShifterProfiles.get(0)
-                                                                                                .getCommodityProfiles()
-                                                                                                .get(Commodity.ELECTRICITY);
-            for (int i = 1; i < timeShifterProfiles.size(); i++) {
-                concatenatedCommodityForecast = concatenatedCommodityForecast.concat(timeShifterProfiles.get(i)
-                                                                                                        .getCommodityProfiles()
-                                                                                                        .get(Commodity.ELECTRICITY));
+            List<Element<CommodityUncertainMeasurables>> elements = new ArrayList<Element<CommodityUncertainMeasurables>>();
+            for (SequentialProfile sp : timeShifterProfiles) {
+                elements.addAll(sp.getCommodityForecast());
             }
+            concatenatedCommodityForecast = new CommodityForecast(elements.toArray(new Element[elements.size()]));
             doBidUpdate();
         } else {
             log.error("Received unknown type of ControlSpaceUpdate: " + message);
@@ -146,9 +146,12 @@ public class TimeshifterAgent extends FpaiAgent {
 
         double initialDemandWatt = getInitialDemand().doubleValue(SI.WATT);
 
-        // if the initial demand is supply, the ratio flips
         if (initialDemandWatt < 0) {
+            // if the initial demand is supply, the ratio flips
             ratio = 1 - ratio;
+        } else if (initialDemandWatt == 0) {
+            // upriceUpdated() expects the demand not to be zero
+            initialDemandWatt = 0.1;
         }
 
         // calculate the step price
@@ -177,7 +180,8 @@ public class TimeshifterAgent extends FpaiAgent {
             return new BidInfo(marketBasis, new PricePoint(0, 0));
         } else {
             // Program currently running
-            Measurable<Power> demand = concatenatedCommodityForecast.getValueAtOffset(offset);
+            Element<CommodityUncertainMeasurables> elementAtOffset = concatenatedCommodityForecast.getElementAtOffset(offset);
+            Measurable<Power> demand = elementAtOffset.getValue().get(Commodity.ELECTRICITY).getMean();
             return new BidInfo(marketBasis, new PricePoint(0, demand.doubleValue(SI.WATT)));
         }
     }
@@ -185,9 +189,11 @@ public class TimeshifterAgent extends FpaiAgent {
     private Measurable<Power> getInitialDemand() {
         return lastTimeshifterUpdate.getTimeShifterProfiles()
                                     .get(0)
-                                    .getCommodityProfiles()
+                                    .getCommodityForecast()
+                                    .get(0)
+                                    .getValue()
                                     .get(Commodity.ELECTRICITY)
-                                    .getValueAtOffset(Measure.zero(SI.SECOND));
+                                    .getMean();
     }
 
     @Override
@@ -200,18 +206,16 @@ public class TimeshifterAgent extends FpaiAgent {
                 // Let's start!
                 final Date startTime = new Date(getCurrentTimeMillis());
                 Date sequentialProfielStartTime = startTime;
-                List<TimeShifterAllocation.SequentialProfileAllocation> seqAllocs = new ArrayList<TimeShifterAllocation.SequentialProfileAllocation>(lastTimeshifterUpdate.getTimeShifterProfiles()
-                                                                                                                                                                          .size());
+                List<SequentialProfileAllocation> seqAllocs = new ArrayList<SequentialProfileAllocation>(lastTimeshifterUpdate.getTimeShifterProfiles()
+                                                                                                                              .size());
                 for (SequentialProfile sp : lastTimeshifterUpdate.getTimeShifterProfiles()) {
-                    seqAllocs.add(new TimeShifterAllocation.SequentialProfileAllocation(sp.getId(),
-                                                                                        sequentialProfielStartTime));
-                    sequentialProfielStartTime = TimeUtil.add(sequentialProfielStartTime, sp.getCommodityProfiles()
-                                                                                            .get(Commodity.ELECTRICITY)
+                    seqAllocs.add(new SequentialProfileAllocation(sp.getId(), sequentialProfielStartTime));
+                    sequentialProfielStartTime = TimeUtil.add(sequentialProfielStartTime, sp.getCommodityForecast()
                                                                                             .getTotalDuration());
                 }
-                TimeShifterAllocation allocation = new TimeShifterAllocation(lastTimeshifterUpdate.getResourceId(),
-                                                                             lastTimeshifterUpdate,
-                                                                             startTime,
+                TimeShifterAllocation allocation = new TimeShifterAllocation(lastTimeshifterUpdate,
+                                                                             powerMatcherController.getTimeService()
+                                                                                                   .getTime(),
                                                                              false,
                                                                              seqAllocs);
                 sendAllocation(allocation);

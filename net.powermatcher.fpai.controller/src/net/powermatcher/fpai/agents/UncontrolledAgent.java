@@ -12,9 +12,9 @@ import org.flexiblepower.efi.uncontrolled.UncontrolledForecast;
 import org.flexiblepower.efi.uncontrolled.UncontrolledMeasurement;
 import org.flexiblepower.efi.uncontrolled.UncontrolledRegistration;
 import org.flexiblepower.messaging.Connection;
-import org.flexiblepower.rai.comm.AllocationStatusUpdate;
-import org.flexiblepower.rai.comm.ControlSpaceRegistration;
-import org.flexiblepower.rai.comm.ControlSpaceUpdate;
+import org.flexiblepower.rai.AllocationStatusUpdate;
+import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceUpdate;
 import org.flexiblepower.rai.values.Commodity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +72,7 @@ public class UncontrolledAgent extends FpaiAgent {
         if (lastUncontrolledMeasurement == null || marketBasis == null) {
             return null;
         } else {
-            double demandWatt = lastUncontrolledMeasurement.getMeasurements()
+            double demandWatt = lastUncontrolledMeasurement.getMeasurable()
                                                            .get(Commodity.ELECTRICITY)
                                                            .doubleValue(SI.WATT);
             return new BidInfo(getCurrentMarketBasis(), new PricePoint(0, demandWatt));

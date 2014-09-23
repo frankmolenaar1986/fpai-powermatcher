@@ -8,11 +8,11 @@ import net.powermatcher.fpai.controller.PowerMatcherController;
 
 import org.flexiblepower.messaging.Connection;
 import org.flexiblepower.messaging.MessageHandler;
-import org.flexiblepower.rai.comm.Allocation;
-import org.flexiblepower.rai.comm.AllocationRevoke;
-import org.flexiblepower.rai.comm.AllocationStatusUpdate;
-import org.flexiblepower.rai.comm.ControlSpaceRegistration;
-import org.flexiblepower.rai.comm.ControlSpaceUpdate;
+import org.flexiblepower.rai.Allocation;
+import org.flexiblepower.rai.AllocationRevoke;
+import org.flexiblepower.rai.AllocationStatusUpdate;
+import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceUpdate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
