@@ -48,7 +48,7 @@ import aQute.bnd.annotation.metatype.Configurable;
 import aQute.bnd.annotation.metatype.Meta;
 
 @Component(immediate = true, designateFactory = Config.class, provide = { Endpoint.class })
-public class PowerMatcherController implements EfiControllerManager {
+public class PowerMatcherController implements EfiControllerManager, AgentTracker {
 
     public static interface Config {
         @Meta.AD(deflt = "ExampleCluster")
@@ -146,7 +146,7 @@ public class PowerMatcherController implements EfiControllerManager {
 
         // remove all agents
         for (FpaiAgent agent : agents.toArray(new FpaiAgent[agents.size()])) {
-            removeAgent(agent);
+            unregisterAgent(agent);
         }
 
         concentrator.unbind(executorService);
@@ -225,30 +225,8 @@ public class PowerMatcherController implements EfiControllerManager {
             // Wut?
             throw new IllegalArgumentException("Unknown type of connection");
         }
-
-        newAgent.bind(executorService);
-        newAgent.bind(pmTimeService);
-
-        if (widget != null) {
-            newAgent.bind(widget);
-        }
-
-        newAgent.bind(concentrator);
-        concentrator.bind(newAgent);
-
-        agents.add(newAgent);
+        registerAgent(newAgent);
         return newAgent;
-    }
-
-    public void removeAgent(FpaiAgent agent) {
-        // unbind the agent from the concentrator and vice versa
-        concentrator.unbind(agent);
-        agent.unbind(concentrator);
-
-        // unbind the executor service
-        agent.unbind(executorService);
-        agent.unbind(pmTimeService);
-        agents.remove(agent);
     }
 
     @Reference
@@ -272,6 +250,33 @@ public class PowerMatcherController implements EfiControllerManager {
 
     public List<FpaiAgent> getAgentList() {
         return agents;
+    }
+
+    @Override
+    public void registerAgent(FpaiAgent agent) {
+        agent.bind(executorService);
+        agent.bind(pmTimeService);
+
+        if (widget != null) {
+            agent.bind(widget);
+        }
+
+        agent.bind(concentrator);
+        concentrator.bind(agent);
+
+        agents.add(agent);
+    }
+
+    @Override
+    public void unregisterAgent(FpaiAgent agent) {
+        // unbind the agent from the concentrator and vice versa
+        concentrator.unbind(agent);
+        agent.unbind(concentrator);
+
+        // unbind the executor service
+        agent.unbind(executorService);
+        agent.unbind(pmTimeService);
+        agents.remove(agent);
     }
 
 }

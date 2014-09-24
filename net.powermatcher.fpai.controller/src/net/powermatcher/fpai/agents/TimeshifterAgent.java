@@ -14,7 +14,7 @@ import net.powermatcher.core.agent.framework.data.BidInfo;
 import net.powermatcher.core.agent.framework.data.MarketBasis;
 import net.powermatcher.core.agent.framework.data.PricePoint;
 import net.powermatcher.core.configurable.service.ConfigurationService;
-import net.powermatcher.fpai.controller.PowerMatcherController;
+import net.powermatcher.fpai.controller.AgentTracker;
 
 import org.flexiblepower.efi.timeshifter.SequentialProfile;
 import org.flexiblepower.efi.timeshifter.SequentialProfileAllocation;
@@ -47,10 +47,8 @@ public class TimeshifterAgent extends FpaiAgent {
     /** Time when the machine started. Null means it's not runnig. */
     private Date profileStartTime = null;
 
-    public TimeshifterAgent(ConfigurationService config,
-                            Connection connection,
-                            PowerMatcherController powerMatcherController) {
-        super(config, connection, powerMatcherController);
+    public TimeshifterAgent(ConfigurationService config, Connection connection, AgentTracker agentTracker) {
+        super(config, connection, agentTracker);
     }
 
     @Override
@@ -214,8 +212,7 @@ public class TimeshifterAgent extends FpaiAgent {
                                                                                             .getTotalDuration());
                 }
                 TimeShifterAllocation allocation = new TimeShifterAllocation(lastTimeshifterUpdate,
-                                                                             powerMatcherController.getTimeService()
-                                                                                                   .getTime(),
+                                                                             new Date(getTimeSource().currentTimeMillis()),
                                                                              false,
                                                                              seqAllocs);
                 sendAllocation(allocation);

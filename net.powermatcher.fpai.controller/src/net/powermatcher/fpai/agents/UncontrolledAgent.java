@@ -6,7 +6,7 @@ import net.powermatcher.core.agent.framework.data.BidInfo;
 import net.powermatcher.core.agent.framework.data.MarketBasis;
 import net.powermatcher.core.agent.framework.data.PricePoint;
 import net.powermatcher.core.configurable.service.ConfigurationService;
-import net.powermatcher.fpai.controller.PowerMatcherController;
+import net.powermatcher.fpai.controller.AgentTracker;
 
 import org.flexiblepower.efi.uncontrolled.UncontrolledForecast;
 import org.flexiblepower.efi.uncontrolled.UncontrolledMeasurement;
@@ -26,10 +26,8 @@ public class UncontrolledAgent extends FpaiAgent {
     private UncontrolledRegistration registration;
     private UncontrolledMeasurement lastUncontrolledMeasurement;
 
-    public UncontrolledAgent(ConfigurationService config,
-                             Connection connection,
-                             PowerMatcherController powerMatcherController) {
-        super(config, connection, powerMatcherController);
+    public UncontrolledAgent(ConfigurationService config, Connection connection, AgentTracker agentTracker) {
+        super(config, connection, agentTracker);
     }
 
     @Override

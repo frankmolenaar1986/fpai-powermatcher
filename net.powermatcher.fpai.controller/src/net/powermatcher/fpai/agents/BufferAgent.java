@@ -2,7 +2,7 @@ package net.powermatcher.fpai.agents;
 
 import net.powermatcher.core.agent.framework.data.BidInfo;
 import net.powermatcher.core.configurable.service.ConfigurationService;
-import net.powermatcher.fpai.controller.PowerMatcherController;
+import net.powermatcher.fpai.controller.AgentTracker;
 
 import org.flexiblepower.messaging.Connection;
 import org.flexiblepower.rai.AllocationStatusUpdate;
@@ -11,8 +11,8 @@ import org.flexiblepower.rai.ControlSpaceUpdate;
 
 public class BufferAgent extends FpaiAgent {
 
-    public BufferAgent(ConfigurationService config, Connection connection, PowerMatcherController powerMatcherController) {
-        super(config, connection, powerMatcherController);
+    public BufferAgent(ConfigurationService config, Connection connection, AgentTracker agentTracker) {
+        super(config, connection, agentTracker);
     }
 
     @Override

@@ -4,7 +4,7 @@ import net.powermatcher.core.agent.framework.Agent;
 import net.powermatcher.core.agent.framework.data.BidInfo;
 import net.powermatcher.core.agent.framework.data.PriceInfo;
 import net.powermatcher.core.configurable.service.ConfigurationService;
-import net.powermatcher.fpai.controller.PowerMatcherController;
+import net.powermatcher.fpai.controller.AgentTracker;
 
 import org.flexiblepower.messaging.Connection;
 import org.flexiblepower.messaging.MessageHandler;
@@ -21,12 +21,12 @@ public abstract class FpaiAgent extends Agent implements MessageHandler {
     public static final Logger log = LoggerFactory.getLogger(FpaiAgent.class);
 
     protected final Connection connection;
-    protected final PowerMatcherController powerMatcherController;
+    protected final AgentTracker agentTracker;
 
-    public FpaiAgent(ConfigurationService config, Connection connection, PowerMatcherController powerMatcherController) {
+    public FpaiAgent(ConfigurationService config, Connection connection, AgentTracker agentTracker) {
         super(config);
         this.connection = connection;
-        this.powerMatcherController = powerMatcherController;
+        this.agentTracker = agentTracker;
     }
 
     @Override
@@ -62,7 +62,8 @@ public abstract class FpaiAgent extends Agent implements MessageHandler {
 
     @Override
     public void disconnected() {
-        powerMatcherController.removeAgent(this);
+        log.info("Agent " + getId() + " disconnecting");
+        agentTracker.unregisterAgent(this);
     }
 
     protected void sendAllocation(Allocation allocation) {

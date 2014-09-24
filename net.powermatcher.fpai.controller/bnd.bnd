@@ -16,7 +16,8 @@ Bundle-Version: 1.0.1
 	net.powermatcher.core.messaging.framework;version=latest,\
 	net.powermatcher.core.messaging.protocol.adapter;version=latest,\
 	net.powermatcher.core.messaging.mqttv3,\
-	flexiblepower.api.efi
+	flexiblepower.api.efi,\
+	junit.osgi
 Include-Resource: res
 
 Service-Component: net.powermatcher.fpai.controller.*
@@ -32,3 +33,12 @@ Private-Package:  \
 	net.powermatcher.fpai.controller,\
 	net.powermatcher.fpai.fullwidget,\
 	net.powermatcher.fpai.util
+
+Test-Cases: ${classes;CONCRETE;EXTENDS;junit.framework.TestCase}
+Tester-Plugin: biz.aQute.junit
+-runtrace: true
+-runbundles: biz.aQute.junit
+-runproperties:  \
+    tester.trace=true, \
+    tester.continuous=true, \
+    tester.dir=testdir
