@@ -51,9 +51,6 @@ import aQute.bnd.annotation.metatype.Meta;
 public class PowerMatcherController implements EfiControllerManager {
 
     public static interface Config {
-        @Meta.AD(deflt = "pvpanel,dishwasher,refrigerator,battery", cardinality = Integer.MAX_VALUE)
-        String[] resourceIds();
-
         @Meta.AD(deflt = "ExampleCluster")
         String cluster_id();
 
@@ -236,12 +233,14 @@ public class PowerMatcherController implements EfiControllerManager {
             newAgent.bind(widget);
         }
 
+        newAgent.bind(concentrator);
+        concentrator.bind(newAgent);
+
         agents.add(newAgent);
         return newAgent;
     }
 
     public void removeAgent(FpaiAgent agent) {
-        agents.remove(agent);
         // unbind the agent from the concentrator and vice versa
         concentrator.unbind(agent);
         agent.unbind(concentrator);
@@ -249,6 +248,7 @@ public class PowerMatcherController implements EfiControllerManager {
         // unbind the executor service
         agent.unbind(executorService);
         agent.unbind(pmTimeService);
+        agents.remove(agent);
     }
 
     @Reference
