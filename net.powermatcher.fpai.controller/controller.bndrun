@@ -20,7 +20,9 @@
 	osgi.identity;filter:='(osgi.identity=net.powermatcher.fpai.controller)',\
 	osgi.identity;filter:='(osgi.identity=flexiblepower.simulation.pvpanel)',\
 	osgi.identity;filter:='(osgi.identity=flexiblepower.uncontrolled.manager)',\
-	osgi.identity;filter:='(osgi.identity=flexiblepower.felix.webconsole.plugins)'
+	osgi.identity;filter:='(osgi.identity=flexiblepower.felix.webconsole.plugins)',\
+	osgi.identity;filter:='(osgi.identity=flexiblepower.simulation.dishwasher)',\
+	osgi.identity;filter:='(osgi.identity=flexiblepower.miele.dishwasher.manager)'
 -runbundles:  \
 	biz.aQute.bnd.annotation;version='[2.4.0,2.4.1)',\
 	ch.qos.logback.classic;version='[1.1.2,1.1.3)',\
@@ -30,11 +32,14 @@
 	flexiblepower.api.efi;version='[1.0.0,1.0.1)',\
 	flexiblepower.api.ext;version='[2.0.0,2.0.1)',\
 	flexiblepower.felix.webconsole.plugins;version='[1.1.0,1.1.1)',\
+	flexiblepower.miele.dishwasher.manager;version=latest,\
 	flexiblepower.runtime;version='[2.0.0,2.0.1)',\
+	flexiblepower.simulation.dishwasher;version=latest,\
 	flexiblepower.simulation.pvpanel;version=latest,\
 	flexiblepower.ui;version='[1.0.0,1.0.1)',\
 	flexiblepower.ui.resourceinfo;version='[1.1.0,1.1.1)',\
 	flexiblepower.uncontrolled.manager;version=latest,\
+	junit.osgi;version='[3.8.2,3.8.3)',\
 	net.powermatcher.core.adapter;version='[0.9.0,0.9.1)',\
 	net.powermatcher.core.adapter.service;version='[0.9.0,0.9.1)',\
 	net.powermatcher.core.agent;version='[0.9.0,0.9.1)',\

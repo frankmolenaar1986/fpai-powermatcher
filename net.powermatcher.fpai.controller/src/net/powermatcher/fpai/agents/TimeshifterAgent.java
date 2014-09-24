@@ -44,7 +44,7 @@ public class TimeshifterAgent extends FpaiAgent {
     private TimeShifterUpdate lastTimeshifterUpdate = null;
     private CommodityForecast concatenatedCommodityForecast;
 
-    /** Time when the machine started. Null means it's not runnig. */
+    /** Time when the machine started. Null means it's not running. */
     private Date profileStartTime = null;
 
     public TimeshifterAgent(ConfigurationService config, Connection connection, AgentTracker agentTracker) {
@@ -134,7 +134,7 @@ public class TimeshifterAgent extends FpaiAgent {
 
     private BidInfo constructFlexibleBid(MarketBasis marketBasis) {
         // determine how far time has progressed in comparison to the start window (start after until start before)
-        long startAfter = lastTimeshifterUpdate.getTimestamp().getTime();
+        long startAfter = lastTimeshifterUpdate.getValidFrom().getTime();
         long endBefore = lastTimeshifterUpdate.getEndBefore().getTime();
         long startBefore = endBefore - concatenatedCommodityForecast.getTotalDuration().longValue(SI.MILLI(SI.SECOND));
         long startWindow = startBefore - startAfter;
