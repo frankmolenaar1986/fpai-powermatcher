@@ -205,13 +205,7 @@ public class PowerMatcherController implements EfiControllerManager, AgentTracke
     public MessageHandler onConnect(Connection connection) {
         FpaiAgent newAgent;
 
-        Map<String, Object> agentProperties = new HashMap<String, Object>(properties);
-        String prefix = "agent" + ConfigurationService.SEPARATOR + ++agentId;
-        agentProperties.put(prefix + ".id", String.valueOf(agentId));
-        agentProperties.put(prefix + ".matcher.id", concentrator.getId());
-        agentProperties.put(prefix + ".agent.bid.log.level", "FULL_LOGGING");
-        agentProperties.put(prefix + ".agent.price.log.level", "FULL_LOGGING");
-        ConfigurationService agentConfig = new PrefixedConfiguration(agentProperties, prefix);
+        ConfigurationService agentConfig = createAgentConfig(agentId++);
 
         if ("buffer".equals(connection.getPort().name())) {
             newAgent = new BufferAgent(agentConfig, connection, this);
@@ -227,6 +221,17 @@ public class PowerMatcherController implements EfiControllerManager, AgentTracke
         }
         registerAgent(newAgent);
         return newAgent;
+    }
+
+    private ConfigurationService createAgentConfig(int agentId) {
+        Map<String, Object> agentProperties = new HashMap<String, Object>(properties);
+        String prefix = "agent" + ConfigurationService.SEPARATOR + agentId;
+        agentProperties.put(prefix + ".id", String.valueOf(agentId));
+        agentProperties.put(prefix + ".matcher.id", concentrator.getId());
+        agentProperties.put(prefix + ".agent.bid.log.level", "FULL_LOGGING");
+        agentProperties.put(prefix + ".agent.price.log.level", "FULL_LOGGING");
+        ConfigurationService agentConfig = new PrefixedConfiguration(agentProperties, prefix);
+        return agentConfig;
     }
 
     @Reference
