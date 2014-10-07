@@ -128,6 +128,7 @@ public class BufferAgent<Q extends Quantity> extends FpaiAgent {
 
             bbe.actuatorId = actuator.getActuatorId();
             bbe.runningModeId = rm.getId();
+            lastBid.add(bbe);
         }
         lastBid.setPriorities(soc);
         log.info("Sending bid");
