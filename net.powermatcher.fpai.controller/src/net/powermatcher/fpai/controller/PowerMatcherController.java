@@ -201,6 +201,7 @@ public class PowerMatcherController implements EfiControllerManager, AgentTracke
         }
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public MessageHandler onConnect(Connection connection) {
         FpaiAgent newAgent;
