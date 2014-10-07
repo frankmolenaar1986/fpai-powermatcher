@@ -14,6 +14,7 @@ import org.flexiblepower.efi.uncontrolled.UncontrolledRegistration;
 import org.flexiblepower.messaging.Connection;
 import org.flexiblepower.rai.AllocationStatusUpdate;
 import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceRevoke;
 import org.flexiblepower.rai.ControlSpaceUpdate;
 import org.flexiblepower.rai.values.Commodity;
 import org.slf4j.Logger;
@@ -65,6 +66,11 @@ public class UncontrolledAgent extends FpaiAgent {
     }
 
     @Override
+    protected void handleControlSpaceRevoke(ControlSpaceRevoke message) {
+        // We don't support forecasts, so...
+    }
+
+    @Override
     protected BidInfo constructBid() {
         MarketBasis marketBasis = getCurrentMarketBasis();
         if (lastUncontrolledMeasurement == null || marketBasis == null) {
@@ -82,4 +88,5 @@ public class UncontrolledAgent extends FpaiAgent {
     protected void priceUpdated() {
         // This agent doesn't support curtailment
     }
+
 }

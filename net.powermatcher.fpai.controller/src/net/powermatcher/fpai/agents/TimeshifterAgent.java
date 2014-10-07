@@ -24,6 +24,7 @@ import org.flexiblepower.efi.timeshifter.TimeShifterUpdate;
 import org.flexiblepower.messaging.Connection;
 import org.flexiblepower.rai.AllocationStatusUpdate;
 import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceRevoke;
 import org.flexiblepower.rai.ControlSpaceUpdate;
 import org.flexiblepower.rai.values.Commodity;
 import org.flexiblepower.rai.values.CommodityForecast;
@@ -111,6 +112,13 @@ public class TimeshifterAgent extends FpaiAgent {
             break;
         }
         doBidUpdate();
+    }
+
+    @Override
+    protected void handleControlSpaceRevoke(ControlSpaceRevoke message) {
+        // Go to no-flexibility state
+        lastTimeshifterUpdate = null;
+        profileStartTime = null;
     }
 
     @Override
@@ -220,4 +228,5 @@ public class TimeshifterAgent extends FpaiAgent {
             }
         }
     }
+
 }

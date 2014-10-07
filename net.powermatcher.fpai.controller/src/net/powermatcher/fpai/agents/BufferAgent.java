@@ -24,6 +24,7 @@ import org.flexiblepower.efi.util.RunningMode;
 import org.flexiblepower.messaging.Connection;
 import org.flexiblepower.rai.AllocationStatusUpdate;
 import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceRevoke;
 import org.flexiblepower.rai.ControlSpaceUpdate;
 import org.flexiblepower.rai.values.Commodity;
 import org.slf4j.Logger;
@@ -89,6 +90,12 @@ public class BufferAgent<Q extends Quantity> extends FpaiAgent {
         }
         log.info("handleAllocationStatusUpdate not yet implemented");
         doBidUpdate();
+    }
+
+    @Override
+    protected void handleControlSpaceRevoke(ControlSpaceRevoke message) {
+        // TODO Auto-generated method stub
+
     }
 
     @Override

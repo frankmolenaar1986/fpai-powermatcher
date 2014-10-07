@@ -7,6 +7,7 @@ import net.powermatcher.fpai.controller.AgentTracker;
 import org.flexiblepower.messaging.Connection;
 import org.flexiblepower.rai.AllocationStatusUpdate;
 import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceRevoke;
 import org.flexiblepower.rai.ControlSpaceUpdate;
 
 public class UnconstrainedAgent extends FpaiAgent {
@@ -29,6 +30,12 @@ public class UnconstrainedAgent extends FpaiAgent {
 
     @Override
     protected void handleAllocationStatusUpdate(AllocationStatusUpdate message) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    protected void handleControlSpaceRevoke(ControlSpaceRevoke message) {
         // TODO Auto-generated method stub
 
     }

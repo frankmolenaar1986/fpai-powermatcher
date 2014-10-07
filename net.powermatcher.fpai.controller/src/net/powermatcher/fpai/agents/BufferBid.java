@@ -41,10 +41,12 @@ public class BufferBid extends TreeSet<BufferBidElement> {
 
         int previousNormalizedPrice = 0;
 
-        for (BufferBidElement e : this) {
-            pricePoints.add(new PricePoint(previousNormalizedPrice, e.demandWatt));
-            pricePoints.add(new PricePoint(e.normalizedPrice(marketBasis), e.demandWatt));
-            previousNormalizedPrice = e.normalizedPrice(marketBasis);
+        BufferBidElement[] sorted = this.toArray(new BufferBidElement[size()]);
+
+        for (BufferBidElement element : sorted) {
+            pricePoints.add(new PricePoint(previousNormalizedPrice, element.demandWatt));
+            pricePoints.add(new PricePoint(element.normalizedPrice(marketBasis), element.demandWatt));
+            previousNormalizedPrice = element.normalizedPrice(marketBasis);
         }
 
         return new BidInfo(marketBasis, pricePoints.toArray(new PricePoint[pricePoints.size()]));
@@ -60,7 +62,7 @@ public class BufferBid extends TreeSet<BufferBidElement> {
         if (isEmpty()) {
             throw new IllegalStateException("Cannot set priorities for empty BufferBid");
         } else if (size() == 1) {
-            first().priority = soc;
+            first().priority = 1;
         } else {
             int step = size() - 1;
             double cur = 0;

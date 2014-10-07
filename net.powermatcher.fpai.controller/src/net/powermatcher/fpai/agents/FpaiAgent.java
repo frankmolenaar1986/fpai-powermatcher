@@ -12,6 +12,7 @@ import org.flexiblepower.rai.Allocation;
 import org.flexiblepower.rai.AllocationRevoke;
 import org.flexiblepower.rai.AllocationStatusUpdate;
 import org.flexiblepower.rai.ControlSpaceRegistration;
+import org.flexiblepower.rai.ControlSpaceRevoke;
 import org.flexiblepower.rai.ControlSpaceUpdate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,8 @@ public abstract class FpaiAgent extends Agent implements MessageHandler {
             handleControlSpaceRegistration((ControlSpaceRegistration) message);
         } else if (message instanceof ControlSpaceUpdate) {
             handleControlSpaceUpdate((ControlSpaceUpdate) message);
+        } else if (message instanceof ControlSpaceRevoke) {
+            handleControlSpaceRevoke((ControlSpaceRevoke) message);
         } else if (message instanceof AllocationStatusUpdate) {
             handleAllocationStatusUpdate((AllocationStatusUpdate) message);
         } else {
@@ -45,6 +48,8 @@ public abstract class FpaiAgent extends Agent implements MessageHandler {
     protected abstract void handleControlSpaceRegistration(ControlSpaceRegistration message);
 
     protected abstract void handleControlSpaceUpdate(ControlSpaceUpdate message);
+
+    protected abstract void handleControlSpaceRevoke(ControlSpaceRevoke message);
 
     protected abstract void handleAllocationStatusUpdate(AllocationStatusUpdate message);
 
