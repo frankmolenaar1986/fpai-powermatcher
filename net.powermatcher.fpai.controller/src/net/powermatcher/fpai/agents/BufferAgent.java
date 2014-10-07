@@ -94,7 +94,9 @@ public class BufferAgent<Q extends Quantity> extends FpaiAgent {
     @Override
     protected BidInfo constructBid() {
         MarketBasis marketBasis = getCurrentMarketBasis();
-        if (marketBasis == null || registration == null) {
+        if (marketBasis == null || registration == null
+            || !bufferHelper.hasReceivedStateUpdate()
+            || !bufferHelper.hasReceivedSystemDescription()) {
             return null;
         }
 
