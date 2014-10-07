@@ -137,7 +137,7 @@ public class BufferAgent<Q extends Quantity> extends FpaiAgent {
             bbe.runningModeId = rm.getId();
             lastBid.add(bbe);
         }
-        lastBid.setPriorities(soc);
+        lastBid.setPriceFractions(soc);
         log.info("Sending bid");
         return lastBid.toBidInfo(marketBasis);
     }

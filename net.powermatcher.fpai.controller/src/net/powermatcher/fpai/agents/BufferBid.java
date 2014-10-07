@@ -18,7 +18,7 @@ public class BufferBid extends TreeSet<BufferBidElement> {
 
         public int actuatorId;
         public int runningModeId;
-        public double priority;
+        public double priceFraction;
         public double demandWatt;
 
         @Override
@@ -28,7 +28,7 @@ public class BufferBid extends TreeSet<BufferBidElement> {
         }
 
         public int normalizedPrice(MarketBasis marketBasis) {
-            return (int) Math.round(priority * marketBasis.getPriceSteps());
+            return (int) Math.round(priceFraction * marketBasis.getPriceSteps());
         }
     }
 
@@ -39,36 +39,42 @@ public class BufferBid extends TreeSet<BufferBidElement> {
 
         List<PricePoint> pricePoints = new ArrayList<PricePoint>();
 
-        int previousNormalizedPrice = 0;
-
         BufferBidElement[] sorted = this.toArray(new BufferBidElement[size()]);
 
-        for (BufferBidElement element : sorted) {
-            pricePoints.add(new PricePoint(previousNormalizedPrice, element.demandWatt));
-            pricePoints.add(new PricePoint(element.normalizedPrice(marketBasis), element.demandWatt));
-            previousNormalizedPrice = element.normalizedPrice(marketBasis);
+        for (int i = 0; i < sorted.length - 1; i++) {
+            // Loop doesn't visit last index
+            int normalizedPrice = sorted[i].normalizedPrice(marketBasis);
+            pricePoints.add(new PricePoint(normalizedPrice, sorted[i].demandWatt));
+            pricePoints.add(new PricePoint(normalizedPrice, sorted[i + 1].demandWatt));
         }
 
         return new BidInfo(marketBasis, pricePoints.toArray(new PricePoint[pricePoints.size()]));
     }
 
     /**
-     * Set priorities (prices) for the bid (part of the bid strategy)
+     * Set price fractions for the bid (part of the bid strategy)
      * 
      * @param soc
      *            State Of Change as double between 0 and 1
      */
-    public void setPriorities(double soc) {
+    public void setPriceFractions(double soc) {
         if (isEmpty()) {
             throw new IllegalStateException("Cannot set priorities for empty BufferBid");
         } else if (size() == 1) {
-            first().priority = 1;
+            first().priceFraction = 1;
         } else {
-            int step = size() - 1;
-            double cur = 0;
+            double step = soc / (size() - 1);
+            double cur = step;
+            int cnt = 0;
             for (BufferBidElement e : this) {
-                e.priority = cur;
-                cur += (soc / step);
+                e.priceFraction = cur;
+                if (cnt == size() - 1) {
+                    // last element, should be 1
+                    e.priceFraction = 1;
+                    break;
+                }
+                cur += step;
+                cnt++;
             }
         }
     }
@@ -82,7 +88,7 @@ public class BufferBid extends TreeSet<BufferBidElement> {
             double priority = price.getNormalizedPrice() / (double) price.getMarketBasis().getPriceSteps();
             BufferBidElement pref = null;
             for (BufferBidElement e : this) {
-                if (e.priority > priority) {
+                if (e.priceFraction > priority) {
                     return pref;
                 }
                 pref = e;
